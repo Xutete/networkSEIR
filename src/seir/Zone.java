@@ -5,7 +5,9 @@
  */
 package seir;
 
+import ilog.concert.IloException;
 import ilog.concert.IloNumVar;
+import ilog.cplex.IloCplex;
 
 /**
  *
@@ -13,21 +15,56 @@ import ilog.concert.IloNumVar;
  */
 public class Zone 
 {
-    private IloNumVar[] S, E, I, R;
+    private int index;
+    private static int next_index = 0;
     
-    private int N;
+    private VarArray S, E, I, R;
+    
+    private double[] reportedI;
+    
+    private double N;
     private int id;
     
     
-    public Zone(int id, int N)
+    public Zone(int id, double N)
     {
+        index = next_index++;
+        
         this.id = id;
         this.N = N;
         
-        S = new IloNumVar[Network.T];
-        E = new IloNumVar[Network.T];
-        I = new IloNumVar[Network.T];
-        R = new IloNumVar[Network.T];
+        S = new VarArray();
+        E = new VarArray();
+        I = new VarArray();
+        R = new VarArray();
+    }
+    
+    public void setReportedI(double[] val)
+    {
+        reportedI = val;
+    }
+    
+    public double getStartingPopulation()
+    {
+        return N;
+    }
+    
+    public double getPopulation(int t)
+    {
+        return S.getValue(t)+E.getValue(t)+I.getValue(t)+R.getValue(t);
+    }
+    
+    public void initialize(IloCplex cplex, int T) throws IloException
+    {
+        S.setSize(T);
+        E.setSize(T);
+        I.setSize(T);
+        R.setSize(T);
+        
+        S.initialize(cplex);
+        E.initialize(cplex);
+        I.initialize(cplex);
+        R.initialize(cplex);
     }
     
     public int getId()
@@ -43,5 +80,10 @@ public class Zone
     public String toString()
     {
         return ""+id;
+    }
+    
+    public int getIdx()
+    {
+        return index;
     }
 }
