@@ -20,6 +20,7 @@ public class Main {
     {
     
         Network network = new Network("MN");
+        network.calibrate();
     }
     
 }

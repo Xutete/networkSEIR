@@ -16,27 +16,31 @@ public class Link
 {
     private double mu;
     
-    private VarArray demand;
+
+    public Link()
+    {
+
+    }
     
     public Link(Zone source, Zone dest, double normal_demand)
     {
-        demand = new VarArray();
-        mu = normal_demand * source.getStartingPopulation();
+        this();
+        setNormalDemand(source, dest, normal_demand);
     }
     
-    public double getMu()
+    public void setNormalDemand(Zone source, Zone dest, double normal_demand)
+    {
+        mu = normal_demand * source.getN();
+    }
+    
+    public double getMu(int t)
     {
         return mu;
     }
     
-    public VarArray getDemand()
-    {
-        return demand;
-    }
     
-    public void initialize(IloCplex cplex, int T) throws IloException
+    public void initialize(int T)
     {
-        demand.setSize(T);
-        demand.initialize(cplex);
+
     }
 }

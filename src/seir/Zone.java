@@ -18,12 +18,16 @@ public class Zone
     private int index;
     private static int next_index = 0;
     
-    private VarArray S, E, I, R;
+    protected double[] S, E, I, R;
+    protected double[] dS, dE, dI, dR;
     
-    private double[] reportedI;
+    protected double[] reportedI;
     
     private double N;
     private int id;
+    
+    protected double[] lambda, r, gradient_lambda, gradient_r;
+    protected double gradient_E0;
     
     
     public Zone(int id, double N)
@@ -33,10 +37,45 @@ public class Zone
         this.id = id;
         this.N = N;
         
-        S = new VarArray();
-        E = new VarArray();
-        I = new VarArray();
-        R = new VarArray();
+    }
+    
+
+    
+    public void initialize(int T, TimePeriod[] r_periods, TimePeriod[] lambda_periods)
+    {
+        
+        S = new double[T];
+        E = new double[T];
+        I = new double[T];
+        R = new double[T];
+        
+        dS = new double[T];
+        dE = new double[T];
+        dI = new double[T];
+        dR = new double[T];
+        
+        r = new double[r_periods.length];
+        lambda = new double[lambda_periods.length];
+        
+        for(int pi = 0; pi < lambda.length; pi++)
+        {
+            lambda[pi] = 1;
+        }
+        
+        gradient_lambda = new double[lambda_periods.length];
+        gradient_r = new double[r_periods.length];
+        gradient_E0 = 0;
+    }
+    
+    public void resetDerivs()
+    {
+        for(int t = 0; t < dS.length; t++)
+        {
+            dS[t] = 0;
+            dE[t] = 0;
+            dI[t] = 0;
+            dR[t] = 0;
+        }
     }
     
     public void setReportedI(double[] val)
@@ -44,29 +83,18 @@ public class Zone
         reportedI = val;
     }
     
-    public double getStartingPopulation()
+    public double getN()
     {
         return N;
     }
     
-    public double getPopulation(int t)
+    public double getN(int t)
     {
-        return S.getValue(t)+E.getValue(t)+I.getValue(t)+R.getValue(t);
+        return S[t]+E[t]+I[t]+R[t];
     }
     
-    public void initialize(IloCplex cplex, int T) throws IloException
-    {
-        S.setSize(T);
-        E.setSize(T);
-        I.setSize(T);
-        R.setSize(T);
-        
-        S.initialize(cplex);
-        E.initialize(cplex);
-        I.initialize(cplex);
-        R.initialize(cplex);
-    }
     
+
     public int getId()
     {
         return id;
