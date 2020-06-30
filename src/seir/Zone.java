@@ -5,10 +5,6 @@
  */
 package seir;
 
-import ilog.concert.IloException;
-import ilog.concert.IloNumVar;
-import ilog.cplex.IloCplex;
-
 /**
  *
  * @author micha

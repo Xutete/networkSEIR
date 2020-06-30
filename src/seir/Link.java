@@ -5,9 +5,6 @@
  */
 package seir;
 
-import ilog.concert.IloException;
-import ilog.cplex.IloCplex;
-
 /**
  *
  * @author micha

@@ -6,10 +6,7 @@
 package seir;
 
 
-import ilog.concert.IloException;
-import ilog.concert.IloLinearNumExpr;
-import ilog.concert.IloNumVar;
-import ilog.cplex.IloCplex;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
