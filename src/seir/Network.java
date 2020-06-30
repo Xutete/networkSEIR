@@ -186,6 +186,87 @@ public class Network
             z.setReportedI(reportedI[cols.get(z.getId())]);
         }
         
+        
+        reportedI = null;
+        
+        
+        filein = new Scanner(new File("data/"+dir+"/MN_recovered.csv"));
+        double[][] reportedR = new double[zones.length][T];
+        
+        cols = new HashMap<>();
+
+        
+        chopper = new Scanner(filein.nextLine());
+        chopper.useDelimiter(",");
+        
+        chopper.next();
+        
+        idx = 0;
+        while(chopper.hasNextInt())
+        {
+            cols.put(chopper.nextInt(), idx++);
+        }
+        
+        while(filein.hasNext())
+        {
+            chopper = new Scanner(filein.nextLine());
+            chopper.useDelimiter(",");
+            
+            int t = chopper.nextInt();
+            
+            for(int i = 0; i < reportedR.length; i++)
+            {
+                reportedR[i][t-1] = chopper.nextDouble();
+            }
+        }
+        
+        filein.close();
+        
+        for(Zone z : zones)
+        {
+            z.setReportedR(reportedR[cols.get(z.getId())]);
+        }
+        
+        
+        filein = new Scanner(new File("data/"+dir+"/MN_deaths.csv"));
+        reportedR = new double[zones.length][T];
+        
+        cols = new HashMap<>();
+
+        
+        chopper = new Scanner(filein.nextLine());
+        chopper.useDelimiter(",");
+        
+        chopper.next();
+        
+        idx = 0;
+        while(chopper.hasNextInt())
+        {
+            cols.put(chopper.nextInt(), idx++);
+        }
+        
+        while(filein.hasNext())
+        {
+            chopper = new Scanner(filein.nextLine());
+            chopper.useDelimiter(",");
+            
+            int t = chopper.nextInt();
+            
+            for(int i = 0; i < reportedR.length; i++)
+            {
+                reportedR[i][t-1] = chopper.nextDouble();
+            }
+        }
+        
+        filein.close();
+        
+        for(Zone z : zones)
+        {
+            z.addReportedR(reportedR[cols.get(z.getId())]);
+        }
+        
+        
+        
         matrix = new Link[zones.length][zones.length];
         
         for(int r = 0; r < matrix.length; r++)

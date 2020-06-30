@@ -21,7 +21,7 @@ public class Zone
     protected double[] S, E, I, R;
     protected double[] dS, dE, dI, dR;
     
-    protected double[] reportedI;
+    protected double[] reportedI, reportedR;
     
     private double N;
     private int id;
@@ -38,6 +38,7 @@ public class Zone
         this.N = N;
         
     }
+    
     
 
     
@@ -82,6 +83,19 @@ public class Zone
     public void setReportedI(double[] val)
     {
         reportedI = val;
+    }
+    
+    public void setReportedR(double[] val)
+    {
+        reportedR = val;
+    }
+    
+    public void addReportedR(double[] val)
+    {
+        for(int i = 0; i < reportedR.length; i++)
+        {
+            reportedR[i] += val[i];
+        }
     }
     
     public double getN()
