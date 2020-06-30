@@ -436,6 +436,7 @@ public class Network
     int num_iter = 100;
     double alpha = 0.4;
     double beta = 0.5;
+    double min_improvement = 0.0;
     
     public void gradientDescent(File saveFile) throws IOException 
     {
@@ -491,7 +492,7 @@ public class Network
         
         double prev_obj = obj;
         
-        for(int iter = 1; iter <= num_iter && improvement > 1; iter++)
+        for(int iter = 1; iter <= num_iter && improvement > min_improvement; iter++)
         {   
             long time = System.nanoTime();
             
