@@ -27,7 +27,7 @@ public class Zone
     private int id;
     
     protected double[] lambda, r, gradient_lambda, gradient_r;
-    protected double gradient_E0;
+    protected double gradient_E0, E0;
     
     
     public Zone(int id, double N)
@@ -65,6 +65,7 @@ public class Zone
         gradient_lambda = new double[lambda_periods.length];
         gradient_r = new double[r_periods.length];
         gradient_E0 = 0;
+        E0 = 0;
     }
     
     public void resetDerivs()

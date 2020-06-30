@@ -20,7 +20,8 @@ public class Main {
     {
     
         Network network = new Network("MN");
-        network.calibrate();
+        network.gradientDescent();
+        network.printTotalError();
     }
     
 }

@@ -58,6 +58,7 @@ public class Network
     public void readNetwork(String dir) throws IOException
     {
         
+        boolean onlyFirst = false;
         
         Scanner filein = new Scanner(new File("data/"+dir+"/MN_population.csv"));
         int count = 0;
@@ -67,6 +68,11 @@ public class Network
             filein.nextLine();
         }
         filein.close();
+        
+        if(onlyFirst)
+        {
+            count = 1;
+        }
         
         zones = new Zone[count];
         
@@ -82,6 +88,11 @@ public class Network
             int county = chopper.nextInt();
             double pop = chopper.nextDouble();
             zones[idx++] = new Zone(county, pop);
+            
+            if(onlyFirst)
+            {
+                break;
+            }
         }
         filein.close();
         
@@ -269,7 +280,44 @@ public class Network
         return -1;
     }
     
-    public void calibrate() 
+    public void printSolution()
+    {
+        System.out.println("Zone\ttime\tpredicted\treported\terror\tr\tlambda");
+        for(Zone i : zones)
+        {
+            for(int t = 0; t < T; t++)
+            {
+                System.out.println(i.getId()+"\t"+t+"\t"+String.format("%.2f", i.I[t])+"\t"+
+                    String.format("%.2f", i.lambda[index_lambda(t)] * i.reportedI[t])+"\t"+
+                    String.format("%.2f", Math.abs(i.I[t]-i.lambda[index_lambda(t)] * i.reportedI[t]))+"\t"+
+                    String.format("%.2f", i.lambda[index_lambda(t)])+"\t"+
+                    String.format("%.2f", i.r[index_r(t)]));
+            }
+        }
+    }
+    
+    public void printTotalError()
+    {
+        System.out.println("time\ttotal error");
+        for(int t = 0; t < T; t++)
+        {
+            double error = 0;
+            
+            int pi = index_lambda(t);
+            
+            for(Zone i : zones)
+            {
+                error += Math.abs( i.I[t] - i.lambda[index_lambda(t)] * i.reportedI[t]);
+            }
+            System.out.println(t+"\t"+error);
+        }
+    }
+    
+    int num_iter = 100;
+    double alpha = 0.4;
+    double beta = 0.5;
+    
+    public void gradientDescent() 
     {
         for(Zone z : zones)
         {
@@ -287,110 +335,229 @@ public class Network
             }
         }
         
-        // initial calculation!
-        calculateSEIR();
+        
         
         System.out.println("T = "+T);
         System.out.println("lambda_periods = "+lambda_periods.length);
         System.out.println("r_periods = "+r_periods.length);
         
-        
-        // calculate dZ/d lambda_i
+        // initial solution
         for(Zone i : zones)
         {
             for(int pi = 0; pi < lambda_periods.length; pi++)
             {
-                double sum = 0;
+                i.lambda[pi] = 1;
+            }
+            
+            for(int pi = 0; pi < r_periods.length; pi++)
+            {
+                i.r[pi] = 1;
+            }
+            
+            i.E0 = 1;
+        }
+        
+        
+        
+        
+        
+        
+        System.out.println("Iteration\tObjective\tObj. change\tCPU time (s)");
+        
+        double obj = calculateSEIR();
+        double improvement = 100;
+        
+        System.out.println("0\t"+obj);
+        
+        double prev_obj = obj;
+        
+        for(int iter = 1; iter <= num_iter && improvement > 1; iter++)
+        {   
+            long time = System.nanoTime();
+            
+            double step = 0;
+            for(Zone i : zones)
+            {
+                resetGradients();
+                calculateGradient_lambda(i);
                 
-                for(int t = lambda_periods[pi].getStart(); t < lambda_periods[pi].getEnd() && t < T; t++)
+                step = calculateStep(iter, obj);
+                updateVariables(step);
+                obj = calculateSEIR();
+                
+                resetGradients();
+                calculateGradient_r(i);
+                
+                step = calculateStep(iter, obj);
+                updateVariables(step);
+                obj = calculateSEIR();
+                
+                resetGradients();
+                calculateGradient_E0(i);
+
+                step = calculateStep(iter, obj);
+                updateVariables(step);
+                obj = calculateSEIR();
+                
+                //System.out.println("\t"+obj+"\t"+step);
+            }
+            
+            
+            time = System.nanoTime() - time;
+            // System.out.println("Step: "+step);
+            //System.out.println("Max step: "+calculateMaxStep());
+            //System.out.println("Obj: "+obj);
+            improvement = 100.0*(prev_obj - obj) / prev_obj;
+            
+            System.out.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
+                    +"%\t"+String.format("%.1f", time/1.0e9));
+            prev_obj = obj;
+        }
+        
+    }
+    
+    public double calculateStep(int iter, double obj)
+    {
+        double step = 1;
+        //step = calculateMaxStep();
+
+        double change = gradDotX();
+
+        while(calculateSEIRsearch(step, iter) > obj + alpha * step * change)
+        {
+            step = step*beta;
+
+            //System.out.println("\t"+calculateSEIRsearch(step, iter)+" > "+(obj + alpha * step * change));
+        }
+
+        //System.out.println("\t"+calculateSEIRsearch(step, iter)+" > "+(obj + alpha * step * change));
+            
+        return step;
+    }
+    
+    public void resetGradients()
+    {
+        for(Zone i : zones)
+        {
+            for(int pi = 0; pi < lambda_periods.length; pi++)
+            {
+                i.gradient_lambda[pi] = 0;
+            }
+            
+            for(int pi = 0; pi < r_periods.length; pi++)
+            {
+                i.gradient_r[pi] = 0;
+            }
+            
+            i.gradient_E0 = 0;
+        }
+    }
+    
+    public void updateVariables(double step)
+    {
+        for(Zone i : zones)
+        {
+            for(int pi = 0; pi < lambda_periods.length; pi++)
+            {
+                i.lambda[pi] = Math.max(1, i.lambda[pi] - step * i.gradient_lambda[pi]);
+            }
+            
+            for(int pi = 0; pi < r_periods.length; pi++)
+            {
+                i.r[pi] = Math.min(20, Math.max(0, i.r[pi] - step * i.gradient_r[pi]));
+            }
+            
+            i.E0 = Math.min(i.getN()/100, Math.max(0, i.E0 - step * i.gradient_E0));
+            
+            i.I[0] = i.lambda[0] * i.reportedI[0];
+            
+        }
+    }
+    
+    // calculate the maximum step size based on feasibility (r>=0, lambda>=1, E0>=0, E0<=N-I0)
+    public double calculateMaxStep()
+    {
+        double output = 1;
+        
+        for(Zone i : zones)
+        {
+            for(int pi = 0; pi < lambda_periods.length; pi++)
+            {
+                // newlambda = lambda - step*gradient
+                double temp = (i.lambda[pi] - 1)/i.gradient_lambda[pi];
+                if(temp > 0)
                 {
-                    sum += 2* (i.I[t] - i.lambda[pi] * i.reportedI[t]) * i.reportedI[t];
+                    output = Math.min(output, temp);
                 }
-                
-                i.gradient_lambda[pi] = sum;
+            }
+            
+            for(int pi = 0; pi < r_periods.length; pi++)
+            {
+                // newr = r - step*gradient
+                double temp = (i.r[pi] - 0)/i.gradient_r[pi];
+                if(temp > 0)
+                {
+                    output = Math.min(output, temp);
+                }
+            }
+            
+            // new E0 = E0 - step*gradient
+            double temp = (i.E0 - 0)/i.gradient_E0;
+            if(temp > 0)
+            {
+                output = Math.min(output, temp);
             }
         }
+        
+        return output;
+    }
+    
+    public void calculateGradient_lambda()
+    {
+        
+        // calculate dZ/d lambda_i
+        for(Zone i : zones)
+        {
+            calculateGradient_lambda(i);
+        }
+    }
+    
+    public void calculateGradient_lambda(Zone i)
+    {
+        for(int pi = 0; pi < lambda_periods.length; pi++)
+        {
+            double sum = 0;
+
+            for(int t = lambda_periods[pi].getStart(); t < lambda_periods[pi].getEnd() && t < T; t++)
+            {
+                sum += 2* (i.I[t] - i.lambda[pi] * i.reportedI[t]) * i.reportedI[t];
+            }
+
+            i.gradient_lambda[pi] = sum;
+        }
+    }
+    
+    public void calculateGradient_r()
+    {
         
         // calculate dZ/dr_i(pi)
         for(Zone i : zones)
         {
-            for(int pix = 0; pix < r_periods.length; pix++)
-            {
-                for(Zone j : zones)
-                {
-                    j.resetDerivs();
-                }
-                
-                TimePeriod pi = r_periods[pix];
-                
-                
-                for(int t = 0; t < T-1; t++)
-                {
-                    int t_idx = index_r(t);
-                    
-                    for(int jx = 0; jx < matrix.length; jx++)
-                    {
-                        Zone j = zones[jx];
-                        
-                        j.dI[t+1] = j.dI[t] + 1/sigma * j.dE[t] - 1/ell * j.dI[t];
-                        
-                        double drdr = 0;
-                        
-                        if(i == j && pi.contains(t))
-                        {
-                            drdr = 1;
-                        }
-                        
-                        j.dE[t+1] = j.dE[t] + drdr * j.S[t] * j.I[t]/j.getN() + j.r[t_idx]*j.dS[t]*j.I[t]/j.getN()
-                                + j.r[t_idx] * j.S[t]/j.getN() * j.dI[t] - 1/sigma * j.dE[t];
-                        
-                        j.dS[t+1] = j.dS[t] - drdr * j.S[t] * j.I[t]/j.getN() - j.r[t_idx]*j.dS[t]*j.I[t]/j.getN()
-                                - j.r[t_idx] * j.S[t]/j.getN() * j.dI[t];
-                        
-                        for(int kx = 0; kx < matrix.length; kx++)
-                        {
-                            if(jx != kx)
-                            {
-                                Zone k = zones[kx];
-                                
-                                j.dI[t+1] += xi * (matrix[kx][jx].getMu(t)*k.dI[t] - matrix[jx][kx].getMu(t)*j.dI[t]);
-                                
-                                j.dE[t+1] += matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t-1)*j.dE[t];
-                                
-                                j.dS[t+1] += matrix[kx][jx].getMu(t)*k.dS[t] - matrix[jx][kx].getMu(t)*j.dS[t];
-                            }
-                        }
-                        
-                        
-                        
-                    }
-                }
-                
-                
-                i.gradient_r[pix] = 0;
-                
-                for(int t = 0; t < T; t++)
-                {
-                    int t_idx = index_lambda(t);
-                    
-                    for(Zone j : zones)
-                    {
-                        i.gradient_r[pix] += 2*(j.I[t] - j.lambda[t_idx] * j.reportedI[t])* j.dI[t];
-                        
-                    }
-                }
-            }
+            calculateGradient_r(i);
         }
-        
-        // calculate dZ/dE[0]
-        for(Zone i : zones)
+    }
+    
+    public void calculateGradient_r(Zone i)
+    {
+        for(int pix = 0; pix < r_periods.length; pix++)
         {
             for(Zone j : zones)
             {
                 j.resetDerivs();
             }
-            
-            i.dE[0] = 1;
+
+            TimePeriod pi = r_periods[pix];
+
 
             for(int t = 0; t < T-1; t++)
             {
@@ -402,12 +569,23 @@ public class Network
 
                     j.dI[t+1] = j.dI[t] + 1/sigma * j.dE[t] - 1/ell * j.dI[t];
 
+                    double drdr = 0;
 
-                    j.dE[t+1] = j.dE[t] + j.r[t_idx]*j.dS[t]*j.I[t]/j.getN()
-                            + j.r[t_idx] * j.S[t]/j.getN() * j.dI[t] - 1/sigma * j.dE[t];
+                    if(i == j && pi.contains(t))
+                    {
+                        drdr = 1;
+                    }
 
-                    j.dS[t+1] = j.dS[t] - j.r[t_idx]*j.dS[t]*j.I[t]/j.getN()
-                            - j.r[t_idx] * j.S[t]/j.getN() * j.dI[t];
+                    double N = j.getN(t);
+                    double dN = j.dS[t] + j.dE[t] + j.dI[t] + j.dR[t];
+                    j.dE[t+1] = j.dE[t] + drdr * j.S[t] * j.I[t]/j.getN(t) + j.r[t_idx]*j.dS[t]*j.I[t]/N
+                            + j.r[t_idx] * j.S[t]/N * j.dI[t] - j.r[t_idx]*j.S[t]*j.I[t]/N/N*dN
+                            - 1/sigma * j.dE[t];
+
+                    j.dS[t+1] = j.dS[t] - drdr * j.S[t] * j.I[t]/N - j.r[t_idx]*j.dS[t]*j.I[t]/N
+                            + j.r[t_idx]*j.S[t]*j.I[t]/N/N*dN - j.r[t_idx] * j.S[t]/N * j.dI[t];
+
+                    j.dR[t+1] = j.dR[t] + 1/ell*j.dI[t];
 
                     for(int kx = 0; kx < matrix.length; kx++)
                     {
@@ -420,6 +598,8 @@ public class Network
                             j.dE[t+1] += matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t-1)*j.dE[t];
 
                             j.dS[t+1] += matrix[kx][jx].getMu(t)*k.dS[t] - matrix[jx][kx].getMu(t)*j.dS[t];
+
+                            j.dR[t+1] += matrix[kx][jx].getMu(t)*k.dR[t] - matrix[jx][kx].getMu(t)*j.dR[t];
                         }
                     }
 
@@ -427,26 +607,96 @@ public class Network
 
                 }
             }
-            
-            i.gradient_E0 = 0;
-            
+
+
+            i.gradient_r[pix] = 0;
+
             for(int t = 0; t < T; t++)
             {
-                int pi = index_lambda(t);
-                
+                int t_idx = index_lambda(t);
+
                 for(Zone j : zones)
                 {
-                    i.gradient_E0 += 2*(j.I[t] - j.lambda[pi]*j.reportedI[t]) * j.dI[t];
-                    
-                    
+                    i.gradient_r[pix] += 2*(j.I[t] - j.lambda[t_idx] * j.reportedI[t])* j.dI[t];
+
                 }
             }
+
+            //System.out.println(i.gradient_r[pix]);
+        }
+    }
+    
+    public void calculateGradient_E0()
+    {
+        
+        // calculate dZ/dE[0]
+        for(Zone i : zones)
+        {
+            calculateGradient_E0(i);
         }
         
-        System.out.println(gradDotX());
-        
-        
-        
+    }
+    
+    public void calculateGradient_E0(Zone i)
+    {
+        for(Zone j : zones)
+        {
+            j.resetDerivs();
+        }
+
+        i.dE[0] = 1;
+
+        for(int t = 0; t < T-1; t++)
+        {
+            int t_idx = index_r(t);
+
+            for(int jx = 0; jx < matrix.length; jx++)
+            {
+                Zone j = zones[jx];
+
+                j.dI[t+1] = j.dI[t] + 1/sigma * j.dE[t] - 1/ell * j.dI[t];
+
+
+                j.dE[t+1] = j.dE[t] + j.r[t_idx]*j.dS[t]*j.I[t]/j.getN()
+                        + j.r[t_idx] * j.S[t]/j.getN() * j.dI[t] - 1/sigma * j.dE[t];
+
+                j.dS[t+1] = j.dS[t] - j.r[t_idx]*j.dS[t]*j.I[t]/j.getN()
+                        - j.r[t_idx] * j.S[t]/j.getN() * j.dI[t];
+
+                for(int kx = 0; kx < matrix.length; kx++)
+                {
+                    if(jx != kx)
+                    {
+                        Zone k = zones[kx];
+
+                        j.dI[t+1] += xi * (matrix[kx][jx].getMu(t)*k.dI[t] - matrix[jx][kx].getMu(t)*j.dI[t]);
+
+                        j.dE[t+1] += matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t-1)*j.dE[t];
+
+                        j.dS[t+1] += matrix[kx][jx].getMu(t)*k.dS[t] - matrix[jx][kx].getMu(t)*j.dS[t];
+                    }
+                }
+
+
+
+            }
+        }
+
+        i.gradient_E0 = 0;
+
+        for(int t = 0; t < T; t++)
+        {
+            int pi = index_lambda(t);
+
+            for(Zone j : zones)
+            {
+                i.gradient_E0 += 2*(j.I[t] - j.lambda[pi]*j.reportedI[t]) * j.dI[t];
+
+
+            }
+        }
+
+        //System.out.println(i.gradient_E0);
     }
     
     public double gradDotX()
@@ -473,11 +723,12 @@ public class Network
     
     
     
-    public void calculateSEIR()
+    public double calculateSEIR()
     {
         for(Zone i : zones)
         {
             i.I[0] = i.lambda[0] * i.reportedI[0];
+            i.E[0] = i.E0;
             i.R[0] = 0;
             i.S[0] = i.getN() - i.I[0] - i.R[0] - i.E[0];
         }
@@ -490,9 +741,11 @@ public class Network
             {
                 Zone i = zones[ix];
                 
-                i.S[t+1] = i.S[t] - i.r[pi_r] * i.S[t] * i.I[t]/i.getN(t);
+                double fSE = Math.min(i.S[t], i.r[pi_r] * i.S[t] * i.I[t]/i.getN(t));
                 
-                i.E[t+1] = i.E[t] + i.r[pi_r] * i.S[t] * i.I[t]/i.getN(t) - 1/sigma*i.E[t];
+                i.S[t+1] = i.S[t] - fSE;
+                
+                i.E[t+1] = i.E[t] + fSE - 1/sigma*i.E[t];
                 
                 i.I[t+1] = i.I[t] + 1/sigma*i.E[t] - 1/ell*i.I[t];
                 
@@ -515,5 +768,98 @@ public class Network
                 }
             }
         }
+        
+        double output = 0.0;
+        
+        for(int t = 0; t < T; t++)
+        {
+            int pi_lambda = index_lambda(t);
+            
+            for(Zone i : zones)
+            {
+                double temp = i.I[t] - i.lambda[pi_lambda] * i.reportedI[t];
+                output += temp*temp;
+            }
+        }
+        
+        return output;
+    }
+    
+    
+    public double calculateSEIRsearch(double step, int iter)
+    {
+        for(Zone i : zones)
+        {
+            i.I[0] = Math.max(1, i.lambda[0] - step*i.gradient_lambda[0]) * i.reportedI[0];
+            i.E[0] = Math.min(i.getN()/100, Math.max(0, i.E0 - step * i.gradient_E0));
+            
+            
+            i.R[0] = 0;
+            i.S[0] = i.getN() - i.I[0] - i.R[0] - i.E[0];
+            
+
+            
+        }
+        
+        for(int t = 0; t < T-1; t++)
+        {
+            int pi_r = index_r(t);
+            
+            for(int ix = 0; ix < zones.length; ix++)
+            {
+                Zone i = zones[ix];
+                
+                double fSE = Math.min(i.S[t], Math.min(20, Math.max(0, i.r[pi_r] - step*i.gradient_r[pi_r])) * i.S[t] * i.I[t]/i.getN(t));
+
+                i.S[t+1] = i.S[t] - fSE ;
+                
+                i.E[t+1] = i.E[t] + fSE - 1/sigma*i.E[t];
+                
+                i.I[t+1] = i.I[t] + 1/sigma*i.E[t] - 1/ell*i.I[t];
+                
+                i.R[t+1] = i.R[t] + 1/ell*i.I[t];
+                
+                /*
+                if(iter == 2)
+                {
+                    System.out.println(i.getId()+" "+t+"\t"+i.S[t]+" "+i.E[t]+" "+i.I[t]+" "+i.R[t]+" "+i.getN()+" "+i.getN(t)+
+                            " "+Math.max(0, i.r[pi_r] - step*i.gradient_r[pi_r]));
+                }
+                */
+                
+                for(int jx = 0; jx < zones.length; jx++)
+                {
+                    if(ix != jx)
+                    {
+                        Zone j = zones[jx];
+
+                        i.S[t+1] += matrix[jx][ix].getMu(t) * j.S[t] - matrix[ix][jx].getMu(t) * i.S[t];
+
+                        i.E[t+1] += matrix[jx][ix].getMu(t) * j.E[t] - matrix[ix][jx].getMu(t) * i.E[t];
+
+                        i.I[t+1] += xi*(matrix[jx][ix].getMu(t) * j.I[t] - matrix[ix][jx].getMu(t) * i.I[t]);
+
+                        i.R[t+1] += matrix[jx][ix].getMu(t) * j.R[t] - matrix[ix][jx].getMu(t) * i.R[t];
+                    }
+                }
+
+            }
+        }
+        
+        double output = 0.0;
+        
+        for(int t = 0; t < T; t++)
+        {
+            int pi_lambda = index_lambda(t);
+            
+            for(Zone i : zones)
+            {
+                double temp = i.I[t] - Math.max(1, i.lambda[pi_lambda] - step*i.gradient_lambda[pi_lambda]) * i.reportedI[t];
+                output += temp*temp;
+            }
+        }
+
+        
+        return output;
     }
 }
