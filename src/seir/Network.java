@@ -11,7 +11,9 @@ import ilog.concert.IloLinearNumExpr;
 import ilog.concert.IloNumVar;
 import ilog.cplex.IloCplex;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -54,6 +56,46 @@ public class Network
     {
         readNetwork(scenario);
     }
+    
+    public void save(File file) throws IOException
+    {
+        PrintStream fileout = new PrintStream(new FileOutputStream(file), true);
+        
+        for(Zone i : zones)
+        {
+            for(int pi = 0; pi < lambda_periods.length; pi++)
+            {
+                fileout.print(i.lambda[pi]+"\t");
+            }
+            for(int pi = 0; pi < r_periods.length; pi++)
+            {
+                fileout.print(i.r[pi]+"\t");
+            }
+            fileout.print(i.E0+"\n");
+        }
+        
+        fileout.close();
+    }
+    
+    public void load(File file) throws IOException
+    {
+        Scanner filein = new Scanner(file);
+        
+        for(Zone i : zones)
+        {
+            for(int pi = 0; pi < lambda_periods.length; pi++)
+            {
+                i.lambda[pi] = filein.nextDouble();
+            }
+            for(int pi = 0; pi < r_periods.length; pi++)
+            {
+                i.r[pi] = filein.nextDouble();
+            }
+            i.E0 = filein.nextDouble();
+        }
+        filein.close();
+    }
+    
     
     public void readNetwork(String dir) throws IOException
     {
@@ -317,7 +359,7 @@ public class Network
     double alpha = 0.4;
     double beta = 0.5;
     
-    public void gradientDescent() 
+    public void gradientDescent(File saveFile) throws IOException 
     {
         for(Zone z : zones)
         {
@@ -362,7 +404,7 @@ public class Network
         
         
         
-        System.out.println("Iteration\tObjective\tObj. change\tCPU time (s)");
+        System.out.println("Iteration\tObjective\tObj. change\tError\tCPU time (s)");
         
         double obj = calculateSEIR();
         double improvement = 100;
@@ -409,11 +451,34 @@ public class Network
             //System.out.println("Obj: "+obj);
             improvement = 100.0*(prev_obj - obj) / prev_obj;
             
+            double error = calculateInfectedError();
+            
             System.out.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
-                    +"%\t"+String.format("%.1f", time/1.0e9));
+                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9));
             prev_obj = obj;
+            
+            save(saveFile);
         }
         
+    }
+    
+    public double calculateInfectedError()
+    {
+        double error = 0.0;
+        double total = 0.0;
+        
+        for(int t = 0; t < T; t++)
+        {
+            int pi = index_lambda(t);
+            
+            for(Zone i : zones)
+            {
+                total += i.reportedI[t];
+                error += Math.abs(i.I[t] - i.lambda[pi] * i.reportedI[t]);
+            }
+        }
+        
+        return 100.0*error/total;
     }
     
     public double calculateStep(int iter, double obj)

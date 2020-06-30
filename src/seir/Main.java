@@ -5,6 +5,7 @@
  */
 package seir;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -20,7 +21,7 @@ public class Main {
     {
     
         Network network = new Network("MN");
-        network.gradientDescent();
+        network.gradientDescent(new File("test_run.txt"));
         network.printTotalError();
     }
     
