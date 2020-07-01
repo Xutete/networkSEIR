@@ -33,8 +33,8 @@ public class Network
     public static final boolean optimizeParameters = false;
     public static final double INFTY = Double.MAX_VALUE;
     
-    private double inv_sigma = 1.0/12; // incubation time
-    private double inv_ell = 1.0/7; // recovery time
+    private double inv_sigma = 0.15; // incubation time
+    private double inv_ell = 0.08* 0.985 + 0.12* 0.015; // recovery time
     
     private double gradient_inv_sigma, gradient_inv_ell;
     
@@ -51,9 +51,13 @@ public class Network
     
     private String scenario;
     
-    private boolean includeTravel = true;
+    private boolean includeTravel;
+    private int startTime = 0;
     
+    private boolean randomize;
     
+    private int run = 0;
+    private boolean useLambda = true;
 
     
     public Network(String scenario) throws IOException
@@ -62,13 +66,80 @@ public class Network
         readNetwork(scenario);
     }
     
+    // average the variable values
+    public Network(String scenario, Network... networks) throws IOException
+    {
+        this(scenario);
+        
+        
+        
+        
+        double total = 0.0;
+        
+        for(Network n : networks)
+        {
+            total += n.inv_ell;
+        }
+        inv_ell = total/networks.length;
+        
+        total = 0.0;
+        
+        for(Network n : networks)
+        {
+            total += n.inv_sigma;
+        }
+        inv_sigma = total/networks.length;
+        
+        total = 0.0;
+        
+        for(Network n : networks)
+        {
+            total += n.xi;
+        }
+        xi = total/networks.length;
+        
+        
+        for(int i = 0; i < zones.length; i++)
+        {
+            for(int pi = 0; pi < lambda_periods.length; pi++)
+            {
+                total = 0.0;
+        
+                for(Network n : networks)
+                {
+                    total += n.zones[i].lambda[pi];
+                }
+                zones[i].lambda[pi] = total/networks.length;
+            }
+            
+            for(int pi = 0; pi < r_periods.length; pi++)
+            {
+                total = 0.0;
+        
+                for(Network n : networks)
+                {
+                    total += n.zones[i].r[pi];
+                }
+                zones[i].r[pi] = total/networks.length;
+            }
+            
+            total = 0.0;
+        
+            for(Network n : networks)
+            {
+                total += n.zones[i].E0;
+            }
+            zones[i].E0 = total/networks.length;
+        }
+    }
+    
     public void save() throws IOException
     {
-        File file = new File(scenario+"/variables.txt");
+        File file = new File("data/"+scenario+"/output/variables_"+run+".txt");
         
         PrintStream fileout = new PrintStream(new FileOutputStream(file), true);
         
-        fileout.println(inv_sigma+"\t"+inv_ell+"\t"+xi);
+        fileout.println(inv_sigma+"\t"+inv_ell+"\t"+xi+"\t"+includeTravel+"\t"+startTime);
         for(Zone i : zones)
         {
             for(int pi = 0; pi < lambda_periods.length; pi++)
@@ -85,15 +156,16 @@ public class Network
         fileout.close();
     }
     
-    public void load() throws IOException
+    public void load(File file) throws IOException
     {
-        File file = new File(scenario+"/variables.txt");
         
         Scanner filein = new Scanner(file);
         
         inv_sigma = filein.nextDouble();
         inv_ell = filein.nextDouble();
         xi = filein.nextDouble();
+        includeTravel = filein.next().equalsIgnoreCase("true");
+        startTime = filein.nextInt();
         
         for(Zone i : zones)
         {
@@ -154,6 +226,7 @@ public class Network
         
         count = 0;
         filein = new Scanner(new File("data/"+dir+"/MN_infected.csv"));
+        filein.nextLine();
         while(filein.hasNext())
         {
             filein.nextLine();
@@ -162,6 +235,7 @@ public class Network
         filein.close();
         
         T = count;
+        
         
         filein = new Scanner(new File("data/"+dir+"/MN_infected.csv"));
         double[][] reportedI = new double[zones.length][T];
@@ -388,7 +462,7 @@ public class Network
         }
 
         
-        filein = new Scanner(new File(scenario+"/parameters.txt"));
+        filein = new Scanner(new File("data/"+scenario+"/parameters.txt"));
         while(filein.hasNext())
         {
             String key = filein.next();
@@ -398,6 +472,20 @@ public class Network
             {
                 includeTravel = value.equalsIgnoreCase("true");
             }
+            else if(key.equalsIgnoreCase("startTime"))
+            {
+                startTime = Integer.parseInt(value.trim());
+            }
+            else if(key.equalsIgnoreCase("numIter"))
+            {
+                num_iter = Integer.parseInt(value.trim());
+            }
+            /*
+            else if(key.equalsIgnoreCase("randomize"))
+            {
+                randomize = value.equalsIgnoreCase("true");
+            }
+            */
         }
         filein.close();
     }
@@ -435,7 +523,7 @@ public class Network
         System.out.println("Zone\ttime\tpredicted\treported\terror\tr\tlambda");
         for(Zone i : zones)
         {
-            for(int t = 0; t < T; t++)
+            for(int t = startTime; t < T; t++)
             {
                 System.out.println(i.getId()+"\t"+t+"\t"+String.format("%.2f", i.I[t])+"\t"+
                     String.format("%.2f", i.lambda[index_lambda(t)] * i.reportedI[t])+"\t"+
@@ -448,18 +536,48 @@ public class Network
     
     public void printTotalError()
     {
-        System.out.println("time\ttotal error");
-        for(int t = 0; t < T; t++)
+        try
+        {
+            printTotalError(System.out);
+        }
+        catch(IOException ex){}
+    }
+    
+    public void printTotalError(PrintStream out) throws IOException
+    {
+        if(zones.length == 1)
+        {
+            out.println("time\ttotal error\t% error\tcount\tpredicted\tlambda\tr");
+        }
+        else
+        {
+            out.println("time\ttotal error\t% error\tcount\tpredicted");
+        }
+        
+        for(int t = startTime; t < T; t++)
         {
             double error = 0;
+            double count = 0;
+            double predicted = 0;
             
             int pi = index_lambda(t);
             
             for(Zone i : zones)
             {
                 error += Math.abs( i.I[t] - i.lambda[index_lambda(t)] * i.reportedI[t]);
+                predicted += i.I[t];
+                count += i.reportedI[t];
             }
-            System.out.println(t+"\t"+error);
+            
+            if(zones.length == 1)
+            {
+                out.println(t+"\t"+error+"\t"
+                    +String.format("%.2f\t%.2f\t%.2f\t%.2f\t%.2f", 100.0*error/count, count, predicted, zones[0].lambda[index_lambda(t)],zones[0].r[index_r(t)]));
+            }
+            else
+            {
+                out.println(t+"\t"+error+"\t"+String.format("%.2f\t%.2f\t%.2f", 100.0*error/count, count, predicted));
+            }
         }
     }
     
@@ -468,8 +586,32 @@ public class Network
     double beta = 0.5;
     double min_improvement = 0.01;
     
-    public void gradientDescent() throws IOException 
+    public int randomStart(int iter) throws IOException
     {
+        int best = -1;
+        double min = Integer.MAX_VALUE;
+        
+        randomize = true;
+        for(run = 0; run < iter; run++)
+        {
+            double obj = gradientDescent();
+            
+            if(obj < min)
+            {
+                min = obj;
+                best = run;
+            }
+        }
+        
+        System.out.println("Best: run "+best+" with obj "+min);
+        
+        return best;
+    }
+    
+    public double gradientDescent() throws IOException 
+    {
+        long total_time = System.nanoTime();
+        
         for(Zone z : zones)
         {
             z.initialize(T, r_periods, lambda_periods);
@@ -488,34 +630,61 @@ public class Network
         
         
         
-        System.out.println("T = "+T);
-        System.out.println("lambda_periods = "+lambda_periods.length);
-        System.out.println("r_periods = "+r_periods.length);
-        
         // initial solution
         for(Zone i : zones)
         {
             for(int pi = 0; pi < lambda_periods.length; pi++)
             {
                 i.lambda[pi] = 1;
+                
+                if(randomize)
+                {
+                    i.lambda[pi] = 1 + Math.random()*2;
+                }
             }
             
             for(int pi = 0; pi < r_periods.length; pi++)
             {
-                i.r[pi] = 1;
+                i.r[pi] = 0;
+                
+                if(randomize)
+                {
+                    i.lambda[pi] = Math.random()*4;
+                }
             }
             
-            i.E0 = 1;
+            if(randomize)
+            {
+                i.E0 = i.getN()/100*Math.random();
+            }
+            else
+            {
+                i.E0 = 0;
+            }
         }
         
         
         
         
         
-        PrintStream fileout =  new PrintStream(new FileOutputStream(new File(scenario+"/log.txt")), true);
+        PrintStream fileout =  new PrintStream(new FileOutputStream(new File("data/"+scenario+"/output/log_"+run+".txt")), true);
         
         
-        System.out.println("Iteration\tObjective\tObj. change\tError\tCPU time (s)");
+        System.out.println(scenario + " run "+run);
+        fileout.println(scenario + " run "+run);
+        System.out.println("T = "+T);
+        fileout.println("T = "+T);
+        System.out.println("lambda_periods = "+lambda_periods.length);
+        fileout.println("lambda_periods = "+lambda_periods.length);
+        System.out.println("r_periods = "+r_periods.length);
+        fileout.println("r_periods = "+r_periods.length);
+        System.out.println("include travel: "+includeTravel);
+        fileout.println("include travel: "+includeTravel);
+        System.out.println("randomize "+randomize);
+        fileout.println("randomize "+randomize);
+        
+        
+        System.out.println("Iteration\tObjective\tObj. change\tError\tCPU time");
         fileout.println("Iteration\tObjective\tObj. change\tError\tCPU time (s)");
         
         double obj = calculateSEIR();
@@ -528,16 +697,19 @@ public class Network
         for(int iter = 1; iter <= num_iter && improvement > min_improvement; iter++)
         {   
             long time = System.nanoTime();
-            
+
             double step = 0;
             for(Zone i : zones)
             {
-                resetGradients();
-                calculateGradient_lambda(i);
-                
-                step = calculateStep(iter, obj);
-                updateVariables(step);
-                obj = calculateSEIR();
+                if(useLambda)
+                {
+                    resetGradients();
+                    calculateGradient_lambda(i);
+
+                    step = calculateStep(iter, obj);
+                    updateVariables(step);
+                    obj = calculateSEIR();
+                }
                 
                 resetGradients();
                 calculateGradient_r(i);
@@ -572,6 +744,7 @@ public class Network
 
                 System.out.print("\tAfter: "+obj+"\n");
             }
+            /*
             else
             {
                 resetGradients();
@@ -582,7 +755,8 @@ public class Network
                 updateVariables(step);
                 obj = calculateSEIR();
             }
-            
+            */
+            save();
             
             time = System.nanoTime() - time;
             // System.out.println("Step: "+step);
@@ -593,15 +767,25 @@ public class Network
             double error = calculateInfectedError();
             
             System.out.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
-                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9));
+                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9)+"s");
             fileout.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
-                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9));
+                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9)+"s");
             prev_obj = obj;
             
-            save();
+            
         }
+        
+        total_time = System.nanoTime() - total_time;
+        
+        System.out.println("CPU time: "+String.format("%.2f", total_time/1.0e9/60)+"min");
+        fileout.println("CPU time: "+String.format("%.2f", total_time/1.0e9/60)+"min");
         fileout.close();
         
+        fileout = new PrintStream(new FileOutputStream(new File("data/"+scenario+"/output/total_error_"+run+".txt")));
+        printTotalError(fileout);
+        fileout.close();
+        
+        return obj;
     }
     
     public double calculateInfectedError()
@@ -609,7 +793,7 @@ public class Network
         double error = 0.0;
         double total = 0.0;
         
-        for(int t = 0; t < T; t++)
+        for(int t = startTime; t < T; t++)
         {
             int pi = index_lambda(t);
             
@@ -684,7 +868,8 @@ public class Network
             
             i.E0 = Math.min(i.getN()/100, Math.max(0, i.E0 - step * i.gradient_E0));
             
-            i.I[0] = i.lambda[0] * i.reportedI[0];
+            i.I[startTime] = i.lambda[index_lambda(startTime)] * i.reportedI[startTime];
+            i.E[startTime] = i.E0;
             
         }
     }
@@ -744,7 +929,7 @@ public class Network
             i.resetDerivs();
         }
         
-        for(int t = 0; t < T-1; t++)
+        for(int t = startTime; t < T-1; t++)
         {
             int pi = index_r(t);
             for(Zone i : zones)
@@ -785,7 +970,7 @@ public class Network
         
         gradient_inv_sigma = 0;
         
-        for(int t = 0; t < T; t++)
+        for(int t = startTime; t < T; t++)
         {
             int pi = index_lambda(t);
             
@@ -803,7 +988,7 @@ public class Network
             i.resetDerivs();
         }
         
-        for(int t = 0; t < T-1; t++)
+        for(int t = startTime; t < T-1; t++)
         {
             int pi = index_r(t);
             for(Zone i : zones)
@@ -844,7 +1029,7 @@ public class Network
         
         gradient_inv_ell = 0;
         
-        for(int t = 0; t < T; t++)
+        for(int t = startTime; t < T; t++)
         {
             int pi = index_lambda(t);
             
@@ -863,7 +1048,7 @@ public class Network
             i.resetDerivs();
         }
         
-        for(int t = 0; t < T-1; t++)
+        for(int t = startTime; t < T-1; t++)
         {
             int pi = index_r(t);
             for(Zone i : zones)
@@ -905,7 +1090,7 @@ public class Network
         
         gradient_xi = 0;
         
-        for(int t = 0; t < T; t++)
+        for(int t = startTime; t < T; t++)
         {
             int pi = index_lambda(t);
             
@@ -922,7 +1107,7 @@ public class Network
         {
             double sum = 0;
 
-            for(int t = lambda_periods[pi].getStart(); t < lambda_periods[pi].getEnd() && t < T; t++)
+            for(int t = Math.max(startTime, lambda_periods[pi].getStart()); t < lambda_periods[pi].getEnd() && t < T; t++)
             {
                 sum -= 2* (i.I[t] - i.lambda[pi] * i.reportedI[t]) * i.reportedI[t];
             }
@@ -953,7 +1138,7 @@ public class Network
             TimePeriod pi = r_periods[pix];
 
 
-            for(int t = 0; t < T-1; t++)
+            for(int t = startTime; t < T-1; t++)
             {
                 int t_idx = index_r(t);
 
@@ -1007,7 +1192,7 @@ public class Network
 
             i.gradient_r[pix] = 0;
 
-            for(int t = 0; t < T; t++)
+            for(int t = startTime; t < T; t++)
             {
                 int t_idx = index_lambda(t);
 
@@ -1040,9 +1225,9 @@ public class Network
             j.resetDerivs();
         }
 
-        i.dE[0] = 1;
+        i.dE[startTime] = 1;
 
-        for(int t = 0; t < T-1; t++)
+        for(int t = startTime; t < T-1; t++)
         {
             int t_idx = index_r(t);
 
@@ -1082,7 +1267,7 @@ public class Network
 
         i.gradient_E0 = 0;
 
-        for(int t = 0; t < T; t++)
+        for(int t = startTime; t < T; t++)
         {
             int pi = index_lambda(t);
 
@@ -1125,13 +1310,13 @@ public class Network
     {
         for(Zone i : zones)
         {
-            i.I[0] = i.lambda[0] * i.reportedI[0];
-            i.E[0] = i.E0;
-            i.R[0] = 0;
-            i.S[0] = i.getN() - i.I[0] - i.R[0] - i.E[0];
+            i.I[startTime] = i.lambda[index_lambda(startTime)] * i.reportedI[startTime];
+            i.E[startTime] = i.E0;
+            i.R[startTime] = 0;
+            i.S[startTime] = i.getN() - i.I[startTime] - i.R[startTime] - i.E[startTime];
         }
         
-        for(int t = 0; t < T-1; t++)
+        for(int t = startTime; t < T-1; t++)
         {
             int pi_r = index_r(t);
             
@@ -1172,7 +1357,7 @@ public class Network
         
         double output = 0.0;
         
-        for(int t = 0; t < T; t++)
+        for(int t = startTime; t < T; t++)
         {
             int pi_lambda = index_lambda(t);
             
@@ -1191,18 +1376,18 @@ public class Network
     {
         for(Zone i : zones)
         {
-            i.I[0] = Math.min(10, Math.max(1, i.lambda[0] - step*i.gradient_lambda[0])) * i.reportedI[0];
-            i.E[0] = Math.min(i.getN()/100, Math.max(0, i.E0 - step * i.gradient_E0));
+            i.I[startTime] = Math.min(10, Math.max(1, i.lambda[index_lambda(startTime)] - step*i.gradient_lambda[index_lambda(startTime)])) * i.reportedI[startTime];
+            i.E[startTime] = Math.min(i.getN()/100, Math.max(0, i.E0 - step * i.gradient_E0));
             
             
-            i.R[0] = 0;
-            i.S[0] = i.getN() - i.I[0] - i.R[0] - i.E[0];
+            i.R[startTime] = 0;
+            i.S[startTime] = i.getN() - i.I[startTime] - i.R[startTime] - i.E[startTime];
             
 
             
         }
         
-        for(int t = 0; t < T-1; t++)
+        for(int t = startTime; t < T-1; t++)
         {
             int pi_r = index_r(t);
             
@@ -1252,7 +1437,7 @@ public class Network
         
         double output = 0.0;
         
-        for(int t = 0; t < T; t++)
+        for(int t = startTime; t < T; t++)
         {
             int pi_lambda = index_lambda(t);
             

@@ -19,10 +19,17 @@ public class Main {
      */
     public static void main(String[] args) throws IOException
     {
-    
-        Network network = new Network("MN_travel");
-        network.gradientDescent();
-        network.printTotalError();
+        String[] scenarios = new String[]{"MN_start80"};
+        
+        for(String x : scenarios)
+        {
+            Network network = new Network(x);
+            //network.gradientDescent();
+            System.out.println(network.randomStart(10));
+            //network.printTotalError();
+        }
+        
+
     }
     
 }
