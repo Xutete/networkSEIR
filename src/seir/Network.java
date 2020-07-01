@@ -29,12 +29,17 @@ import java.util.Collections;
  */
 public class Network 
 {
-    
+    public static final boolean optimizeParameters = false;
     public static final double INFTY = Double.MAX_VALUE;
     
-    private double sigma = 12; // incubation time
-    private double ell = 7; // recovery time
-    private double xi = 0; // reduction in travel among infected individuals
+    private double inv_sigma = 1.0/12; // incubation time
+    private double inv_ell = 1.0/7; // recovery time
+    
+    private double gradient_inv_sigma, gradient_inv_ell;
+    
+    private double xi = 0.5; // reduction in travel among infected individuals
+    private double gradient_xi;
+    
     private int T;
     
     private Zone[] zones;
@@ -58,6 +63,7 @@ public class Network
     {
         PrintStream fileout = new PrintStream(new FileOutputStream(file), true);
         
+        fileout.println(inv_sigma+"\t"+inv_ell+"\t"+xi);
         for(Zone i : zones)
         {
             for(int pi = 0; pi < lambda_periods.length; pi++)
@@ -77,6 +83,10 @@ public class Network
     public void load(File file) throws IOException
     {
         Scanner filein = new Scanner(file);
+        
+        inv_sigma = filein.nextDouble();
+        inv_ell = filein.nextDouble();
+        xi = filein.nextDouble();
         
         for(Zone i : zones)
         {
@@ -436,7 +446,7 @@ public class Network
     int num_iter = 100;
     double alpha = 0.4;
     double beta = 0.5;
-    double min_improvement = 0.0;
+    double min_improvement = 0.01;
     
     public void gradientDescent(File saveFile) throws IOException 
     {
@@ -523,6 +533,23 @@ public class Network
                 //System.out.println("\t"+obj+"\t"+step);
             }
             
+            if(optimizeParameters)
+            {
+                System.out.print("Before: "+obj);
+
+                resetGradients();
+
+                calculateGradient_ell();
+                calculateGradient_sigma();
+                calculateGradient_xi();
+
+                step = calculateStep(iter, obj);
+                updateVariables(step);
+                obj = calculateSEIR();
+
+                System.out.print("\tAfter: "+obj+"\n");
+            }
+            
             
             time = System.nanoTime() - time;
             // System.out.println("Step: "+step);
@@ -581,6 +608,10 @@ public class Network
     
     public void resetGradients()
     {
+        gradient_inv_sigma = 0;
+        gradient_inv_ell = 0;
+        gradient_xi = 0;
+        
         for(Zone i : zones)
         {
             for(int pi = 0; pi < lambda_periods.length; pi++)
@@ -599,6 +630,10 @@ public class Network
     
     public void updateVariables(double step)
     {
+        xi = xi - step*gradient_xi;
+        inv_sigma = inv_sigma - step*gradient_inv_sigma;
+        inv_ell = inv_ell - step*gradient_inv_ell;
+        
         for(Zone i : zones)
         {
             for(int pi = 0; pi < lambda_periods.length; pi++)
@@ -666,6 +701,177 @@ public class Network
         }
     }
     
+    public void calculateGradient_sigma()
+    {
+        for(Zone i : zones)
+        {
+            i.resetDerivs();
+        }
+        
+        for(int t = 0; t < T-1; t++)
+        {
+            int pi = index_r(t);
+            for(Zone i : zones)
+            {
+                double dN = i.dS[t] + i.dE[t] + i.dI[t] + i.dR[t];
+                double N = i.getN(t);
+                
+                i.dI[t+1] = i.dI[t] + inv_sigma * i.dE[t] + inv_sigma * i.E[t] - inv_ell * i.dI[t];
+                
+                i.dE[t+1] = i.dE[t] + i.r[pi]*i.dS[t]*i.I[t]/N + i.r[pi]*i.S[t]/N*i.dI[t] 
+                        - i.r[pi]*i.S[t]*i.I[t]/N/N*dN - inv_sigma*i.dE[t] - inv_sigma*i.E[t];
+                
+                i.dS[t+1] = i.dS[t] - i.r[pi]*i.dS[t]*i.I[t]/N - i.r[pi]*i.S[t]/N*i.dI[t] +
+                        i.r[pi]*i.S[t]*i.I[t]/N/N*dN;
+                
+                i.dR[t+1] = i.dR[t] + inv_ell*i.dI[t];
+                
+                for(int jx = 0; jx < matrix.length; jx++)
+                {
+                    if(jx != i.getIdx())
+                    {
+                        Zone j = zones[jx];
+
+                        i.dI[t+1] += xi*(matrix[jx][i.getIdx()].getMu(t)*j.dI[t] - matrix[i.getIdx()][jx].getMu(t)*i.dI[t]);
+
+                        i.dE[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dE[t] - matrix[i.getIdx()][jx].getMu(t)*i.dE[t];
+
+                        i.dS[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dS[t] - matrix[i.getIdx()][jx].getMu(t)*i.dS[t];
+
+                        i.dR[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dR[t] - matrix[i.getIdx()][jx].getMu(t)*i.dR[t];
+                    }
+                }
+            }
+        }
+        
+        gradient_inv_sigma = 0;
+        
+        for(int t = 0; t < T; t++)
+        {
+            int pi = index_lambda(t);
+            
+            for(Zone i : zones)
+            {
+                gradient_inv_sigma += 2* (i.I[t] - i.lambda[pi]*i.reportedI[t])*i.dI[t];
+            }
+        }
+    }
+    
+    public void calculateGradient_ell()
+    {
+        for(Zone i : zones)
+        {
+            i.resetDerivs();
+        }
+        
+        for(int t = 0; t < T-1; t++)
+        {
+            int pi = index_r(t);
+            for(Zone i : zones)
+            {
+                double dN = i.dS[t] + i.dE[t] + i.dI[t] + i.dR[t];
+                double N = i.getN(t);
+                
+                i.dI[t+1] = i.dI[t] + inv_sigma * i.dE[t]  - inv_ell * i.dI[t] - inv_ell*i.I[t];
+                
+                i.dE[t+1] = i.dE[t] + i.r[pi]*i.dS[t]*i.I[t]/N + i.r[pi]*i.S[t]/N*i.dI[t] 
+                        - i.r[pi]*i.S[t]*i.I[t]/N/N*dN - inv_sigma*i.dE[t];
+                
+                i.dS[t+1] = i.dS[t] - i.r[pi]*i.dS[t]*i.I[t]/N - i.r[pi]*i.S[t]/N*i.dI[t] +
+                        i.r[pi]*i.S[t]*i.I[t]/N/N*dN;
+                
+                i.dR[t+1] = i.dR[t] + inv_ell*i.dI[t] + inv_ell*i.I[t];
+                
+                for(int jx = 0; jx < matrix.length; jx++)
+                {
+                    
+                    if(jx != i.getIdx())
+                    {
+                        Zone j = zones[jx];
+
+                        i.dI[t+1] += xi*(matrix[jx][i.getIdx()].getMu(t)*j.dI[t] - matrix[i.getIdx()][jx].getMu(t)*i.dI[t]);
+
+                        i.dE[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dE[t] - matrix[i.getIdx()][jx].getMu(t)*i.dE[t];
+
+                        i.dS[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dS[t] - matrix[i.getIdx()][jx].getMu(t)*i.dS[t];
+
+                        i.dR[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dR[t] - matrix[i.getIdx()][jx].getMu(t)*i.dR[t];
+                    }
+                }
+            }
+        }
+        
+        gradient_inv_ell = 0;
+        
+        for(int t = 0; t < T; t++)
+        {
+            int pi = index_lambda(t);
+            
+            for(Zone i : zones)
+            {
+                gradient_inv_ell += 2* (i.I[t] - i.lambda[pi]*i.reportedI[t])*i.dI[t];
+            }
+        }
+    }
+    
+    
+    public void calculateGradient_xi()
+    {
+        for(Zone i : zones)
+        {
+            i.resetDerivs();
+        }
+        
+        for(int t = 0; t < T-1; t++)
+        {
+            int pi = index_r(t);
+            for(Zone i : zones)
+            {
+                double dN = i.dS[t] + i.dE[t] + i.dI[t] + i.dR[t];
+                double N = i.getN(t);
+                
+                i.dI[t+1] = i.dI[t] + inv_sigma * i.dE[t]  - inv_ell * i.dI[t];
+                
+                i.dE[t+1] = i.dE[t] + i.r[pi]*i.dS[t]*i.I[t]/N + i.r[pi]*i.S[t]/N*i.dI[t] 
+                        - i.r[pi]*i.S[t]*i.I[t]/N/N*dN - inv_sigma*i.dE[t];
+                
+                i.dS[t+1] = i.dS[t] - i.r[pi]*i.dS[t]*i.I[t]/N - i.r[pi]*i.S[t]/N*i.dI[t] +
+                        i.r[pi]*i.S[t]*i.I[t]/N/N*dN;
+                
+                i.dR[t+1] = i.dR[t] + inv_ell*i.dI[t];
+                
+                for(int jx = 0; jx < matrix.length; jx++)
+                {
+                    if(jx != i.getIdx())
+                    {
+                        Zone j = zones[jx];
+
+                        i.dI[t+1] += xi*(matrix[jx][i.getIdx()].getMu(t)*j.dI[t] - matrix[i.getIdx()][jx].getMu(t)*i.dI[t]);
+                        i.dI[t+1] += (matrix[jx][i.getIdx()].getMu(t)*j.I[t] - matrix[i.getIdx()][jx].getMu(t)*i.I[t]);
+
+                        i.dE[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dE[t] - matrix[i.getIdx()][jx].getMu(t)*i.dE[t];
+
+                        i.dS[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dS[t] - matrix[i.getIdx()][jx].getMu(t)*i.dS[t];
+
+                        i.dR[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dR[t] - matrix[i.getIdx()][jx].getMu(t)*i.dR[t];
+                    }
+                }
+            }
+        }
+        
+        gradient_xi = 0;
+        
+        for(int t = 0; t < T; t++)
+        {
+            int pi = index_lambda(t);
+            
+            for(Zone i : zones)
+            {
+                gradient_xi += 2* (i.I[t] - i.lambda[pi]*i.reportedI[t])*i.dI[t];
+            }
+        }
+    }
+    
     public void calculateGradient_lambda(Zone i)
     {
         for(int pi = 0; pi < lambda_periods.length; pi++)
@@ -711,7 +917,7 @@ public class Network
                 {
                     Zone j = zones[jx];
 
-                    j.dI[t+1] = j.dI[t] + 1/sigma * j.dE[t] - 1/ell * j.dI[t];
+                    j.dI[t+1] = j.dI[t] + inv_sigma * j.dE[t] - inv_ell * j.dI[t];
 
                     double drdr = 0;
 
@@ -724,12 +930,12 @@ public class Network
                     double dN = j.dS[t] + j.dE[t] + j.dI[t] + j.dR[t];
                     j.dE[t+1] = j.dE[t] + drdr * j.S[t] * j.I[t]/j.getN(t) + j.r[t_idx]*j.dS[t]*j.I[t]/N
                             + j.r[t_idx] * j.S[t]/N * j.dI[t] - j.r[t_idx]*j.S[t]*j.I[t]/N/N*dN
-                            - 1/sigma * j.dE[t];
+                            - inv_sigma * j.dE[t];
 
                     j.dS[t+1] = j.dS[t] - drdr * j.S[t] * j.I[t]/N - j.r[t_idx]*j.dS[t]*j.I[t]/N
                             + j.r[t_idx]*j.S[t]*j.I[t]/N/N*dN - j.r[t_idx] * j.S[t]/N * j.dI[t];
 
-                    j.dR[t+1] = j.dR[t] + 1/ell*j.dI[t];
+                    j.dR[t+1] = j.dR[t] + inv_ell*j.dI[t];
 
                     for(int kx = 0; kx < matrix.length; kx++)
                     {
@@ -798,11 +1004,11 @@ public class Network
             {
                 Zone j = zones[jx];
 
-                j.dI[t+1] = j.dI[t] + 1/sigma * j.dE[t] - 1/ell * j.dI[t];
+                j.dI[t+1] = j.dI[t] + inv_sigma * j.dE[t] - inv_ell * j.dI[t];
 
 
                 j.dE[t+1] = j.dE[t] + j.r[t_idx]*j.dS[t]*j.I[t]/j.getN()
-                        + j.r[t_idx] * j.S[t]/j.getN() * j.dI[t] - 1/sigma * j.dE[t];
+                        + j.r[t_idx] * j.S[t]/j.getN() * j.dI[t] - inv_sigma * j.dE[t];
 
                 j.dS[t+1] = j.dS[t] - j.r[t_idx]*j.dS[t]*j.I[t]/j.getN()
                         - j.r[t_idx] * j.S[t]/j.getN() * j.dI[t];
@@ -889,11 +1095,11 @@ public class Network
                 
                 i.S[t+1] = i.S[t] - fSE;
                 
-                i.E[t+1] = i.E[t] + fSE - 1/sigma*i.E[t];
+                i.E[t+1] = i.E[t] + fSE - inv_sigma*i.E[t];
                 
-                i.I[t+1] = i.I[t] + 1/sigma*i.E[t] - 1/ell*i.I[t];
+                i.I[t+1] = i.I[t] + inv_sigma*i.E[t] - inv_ell*i.I[t];
                 
-                i.R[t+1] = i.R[t] + 1/ell*i.I[t];
+                i.R[t+1] = i.R[t] + inv_ell*i.I[t];
                 
                 for(int jx = 0; jx < zones.length; jx++)
                 {
@@ -957,11 +1163,11 @@ public class Network
 
                 i.S[t+1] = i.S[t] - fSE ;
                 
-                i.E[t+1] = i.E[t] + fSE - 1/sigma*i.E[t];
+                i.E[t+1] = i.E[t] + fSE - (inv_sigma - step*gradient_inv_sigma) *i.E[t];
                 
-                i.I[t+1] = i.I[t] + 1/sigma*i.E[t] - 1/ell*i.I[t];
+                i.I[t+1] = i.I[t] + (inv_sigma - step*gradient_inv_sigma)*i.E[t] - (inv_ell - step*gradient_inv_ell)*i.I[t];
                 
-                i.R[t+1] = i.R[t] + 1/ell*i.I[t];
+                i.R[t+1] = i.R[t] + (inv_ell - step*gradient_inv_ell)*i.I[t];
                 
                 /*
                 if(iter == 2)
@@ -981,7 +1187,7 @@ public class Network
 
                         i.E[t+1] += matrix[jx][ix].getMu(t) * j.E[t] - matrix[ix][jx].getMu(t) * i.E[t];
 
-                        i.I[t+1] += xi*(matrix[jx][ix].getMu(t) * j.I[t] - matrix[ix][jx].getMu(t) * i.I[t]);
+                        i.I[t+1] += (xi-step*gradient_xi)*(matrix[jx][ix].getMu(t) * j.I[t] - matrix[ix][jx].getMu(t) * i.I[t]);
 
                         i.R[t+1] += matrix[jx][ix].getMu(t) * j.R[t] - matrix[ix][jx].getMu(t) * i.R[t];
                     }
