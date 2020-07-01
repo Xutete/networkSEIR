@@ -11,28 +11,25 @@ package seir;
  */
 public class Link 
 {
-    private double mu;
+    private double[] mu;
     
 
-    public Link()
+    public Link(int T)
     {
-
+        mu = new double[T];
     }
     
-    public Link(Zone source, Zone dest, double normal_demand)
+ 
+    
+    public void setNormalDemand(Zone source, Zone dest, int t, double normal_demand)
     {
-        this();
-        setNormalDemand(source, dest, normal_demand);
+        mu[t] = normal_demand / source.getN();
     }
     
-    public void setNormalDemand(Zone source, Zone dest, double normal_demand)
-    {
-        mu = normal_demand * source.getN();
-    }
     
     public double getMu(int t)
     {
-        return 0.01;
+        return mu[t];
     }
     
     

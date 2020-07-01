@@ -32,7 +32,7 @@ public class Main {
         
         */
         
-        Network network = new Network("MN_start80");
+        Network network = new Network("MN");
         //network.calcAvgValues(0, 9);
         
 

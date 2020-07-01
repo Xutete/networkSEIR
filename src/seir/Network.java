@@ -400,7 +400,7 @@ public class Network
             {
                 if(r != c)
                 {
-                    matrix[r][c] = new Link();
+                    matrix[r][c] = new Link(T);
                 }
             }
         }
@@ -523,6 +523,145 @@ public class Network
                 randomize = value.equalsIgnoreCase("true");
             }
             */
+        }
+        filein.close();
+        
+        
+        
+        count = 0;
+       
+        filein = new Scanner(new File("data/"+scenario+"/travel_change.csv"));
+        Map<Integer, Double> changes = new HashMap<Integer, Double>();
+        
+        filein.nextLine();
+        
+        int lastDay = 0;
+        int earliest_change_date = Integer.MAX_VALUE;
+        while(filein.hasNext())
+        {
+            chopper = new Scanner(filein.nextLine());
+            chopper.useDelimiter(",");
+            
+            try
+            {
+                Date day = new SimpleDateFormat("MM/dd/yyyy").parse(chopper.next());
+                chopper.next();
+                chopper.next();
+                chopper.next();
+                chopper.next();
+                
+                double change = chopper.nextDouble();
+                int daysBetween = daysBetween(start, day);
+                changes.put(daysBetween, change);
+                earliest_change_date = (int)Math.min(daysBetween, earliest_change_date);
+                lastDay = (int)Math.max(daysBetween, lastDay);
+            }
+            catch(ParseException ex)
+            {
+                ex.printStackTrace(System.err);
+            }
+        }
+        filein.close();
+        
+        for(int t = 0; t < earliest_change_date; t++)
+        {
+            changes.put(t, 0.0);
+        }
+        
+        
+        cols = null;
+        
+        Map<Integer, Integer> zoneLookup = new HashMap<>();
+        
+        for(int i = 0; i < zones.length; i++)
+        {
+            zoneLookup.put(zones[i].getId(), i);
+        }
+        
+        
+        filein = new Scanner(new File("data/"+scenario+"/travel_data.txt"));
+        while(filein.hasNext())
+        {
+            Date start_period_date, end_period_date, start_apply_date, end_apply_date;
+            
+            try
+            {
+                start_period_date = new SimpleDateFormat("MM/dd/yyyy").parse(filein.next());
+                end_period_date = new SimpleDateFormat("MM/dd/yyyy").parse(filein.next());
+                start_apply_date = new SimpleDateFormat("MM/dd/yyyy").parse(filein.next());
+                end_apply_date = new SimpleDateFormat("MM/dd/yyyy").parse(filein.next());
+                String datafile = filein.nextLine().trim();
+                
+                int start_period = daysBetween(start, start_period_date);
+                int end_period = daysBetween(start, end_period_date);
+                int start_apply = daysBetween(start, start_apply_date);
+                int end_apply = daysBetween(start, end_apply_date);
+                
+                
+                // scale up demand to normal then scale down by % change
+                double total_predicted = 0;
+                double total_actual = 0;
+                count = 0;
+                
+                for(int i = start_period; i <= end_period; i++)
+                {
+                    if(changes.containsKey(i))
+                    {
+                        total_predicted += 1;
+                        total_actual += (100+changes.get(i))/100;
+                        count++;
+                    }
+                }
+                
+                
+                double scaleup = 1.0 / (total_actual / total_predicted);
+                
+                Scanner filein2 = new Scanner(new File("data/"+scenario+"/"+datafile));
+                
+                while(filein2.hasNext())
+                {
+                    chopper = new Scanner(filein2.nextLine());
+                    chopper.useDelimiter(",");
+                    
+                    int source = chopper.nextInt();
+                    int dest = chopper.nextInt();
+                    double demand = chopper.nextDouble();
+                    
+                    int r = zoneLookup.get(source);
+                    int c = zoneLookup.get(dest);
+                    
+                    if(r == c)
+                    {
+                        continue;
+                    }
+                
+                    for(int t = (int)Math.max(0, start_apply); t <= end_apply && t < T; t++)
+                    {
+                        double change;
+                        if(!changes.containsKey(t))
+                        {
+                            change = changes.get(lastDay);
+                        }
+                        else
+                        {
+                            change = changes.get(t);
+                        }
+                        
+                        double scaledown = (100+change)/100;
+
+                        
+                        matrix[r][c].setNormalDemand(zones[r], zones[c], t, demand*scaleup * scaledown);
+                    }
+                }
+                filein2.close();
+                
+            }
+            catch(ParseException ex)
+            {
+                ex.printStackTrace(System.err);
+            }
+            
+            
         }
         filein.close();
     }
