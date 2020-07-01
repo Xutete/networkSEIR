@@ -896,7 +896,7 @@ public class Network
 
             for(int t = lambda_periods[pi].getStart(); t < lambda_periods[pi].getEnd() && t < T; t++)
             {
-                sum += 2* (i.I[t] - i.lambda[pi] * i.reportedI[t]) * i.reportedI[t];
+                sum -= 2* (i.I[t] - i.lambda[pi] * i.reportedI[t]) * i.reportedI[t];
             }
 
             i.gradient_lambda[pi] = sum;

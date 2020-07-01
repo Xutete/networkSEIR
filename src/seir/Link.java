@@ -32,7 +32,7 @@ public class Link
     
     public double getMu(int t)
     {
-        return mu;
+        return 0.01;
     }
     
     
