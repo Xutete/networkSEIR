@@ -29,6 +29,7 @@ import java.util.Collections;
  */
 public class Network 
 {
+    
     public static final boolean optimizeParameters = false;
     public static final double INFTY = Double.MAX_VALUE;
     
@@ -50,7 +51,7 @@ public class Network
     
     private String scenario;
     
-    
+    private boolean includeTravel = true;
     
     
 
@@ -386,6 +387,19 @@ public class Network
             lambda_periods[i] = new TimePeriod(timeline.get(i), timeline.get(i+1));
         }
 
+        
+        filein = new Scanner(new File(scenario+"/parameters.txt"));
+        while(filein.hasNext())
+        {
+            String key = filein.next();
+            String value = filein.next();
+            
+            if(key.equalsIgnoreCase("travel"))
+            {
+                includeTravel = value.equalsIgnoreCase("true");
+            }
+        }
+        filein.close();
     }
     
     public int daysBetween(Date d1, Date d2){
@@ -748,19 +762,22 @@ public class Network
                 
                 i.dR[t+1] = i.dR[t] + inv_ell*i.dI[t];
                 
-                for(int jx = 0; jx < matrix.length; jx++)
+                if(includeTravel)
                 {
-                    if(jx != i.getIdx())
+                    for(int jx = 0; jx < matrix.length; jx++)
                     {
-                        Zone j = zones[jx];
+                        if(jx != i.getIdx())
+                        {
+                            Zone j = zones[jx];
 
-                        i.dI[t+1] += xi*(matrix[jx][i.getIdx()].getMu(t)*j.dI[t] - matrix[i.getIdx()][jx].getMu(t)*i.dI[t]);
+                            i.dI[t+1] += xi*(matrix[jx][i.getIdx()].getMu(t)*j.dI[t] - matrix[i.getIdx()][jx].getMu(t)*i.dI[t]);
 
-                        i.dE[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dE[t] - matrix[i.getIdx()][jx].getMu(t)*i.dE[t];
+                            i.dE[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dE[t] - matrix[i.getIdx()][jx].getMu(t)*i.dE[t];
 
-                        i.dS[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dS[t] - matrix[i.getIdx()][jx].getMu(t)*i.dS[t];
+                            i.dS[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dS[t] - matrix[i.getIdx()][jx].getMu(t)*i.dS[t];
 
-                        i.dR[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dR[t] - matrix[i.getIdx()][jx].getMu(t)*i.dR[t];
+                            i.dR[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dR[t] - matrix[i.getIdx()][jx].getMu(t)*i.dR[t];
+                        }
                     }
                 }
             }
@@ -804,20 +821,22 @@ public class Network
                 
                 i.dR[t+1] = i.dR[t] + inv_ell*i.dI[t] + inv_ell*i.I[t];
                 
-                for(int jx = 0; jx < matrix.length; jx++)
+                if(includeTravel)
                 {
-                    
-                    if(jx != i.getIdx())
+                    for(int jx = 0; jx < matrix.length; jx++)
                     {
-                        Zone j = zones[jx];
+                        if(jx != i.getIdx())
+                        {
+                            Zone j = zones[jx];
 
-                        i.dI[t+1] += xi*(matrix[jx][i.getIdx()].getMu(t)*j.dI[t] - matrix[i.getIdx()][jx].getMu(t)*i.dI[t]);
+                            i.dI[t+1] += xi*(matrix[jx][i.getIdx()].getMu(t)*j.dI[t] - matrix[i.getIdx()][jx].getMu(t)*i.dI[t]);
 
-                        i.dE[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dE[t] - matrix[i.getIdx()][jx].getMu(t)*i.dE[t];
+                            i.dE[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dE[t] - matrix[i.getIdx()][jx].getMu(t)*i.dE[t];
 
-                        i.dS[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dS[t] - matrix[i.getIdx()][jx].getMu(t)*i.dS[t];
+                            i.dS[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dS[t] - matrix[i.getIdx()][jx].getMu(t)*i.dS[t];
 
-                        i.dR[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dR[t] - matrix[i.getIdx()][jx].getMu(t)*i.dR[t];
+                            i.dR[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dR[t] - matrix[i.getIdx()][jx].getMu(t)*i.dR[t];
+                        }
                     }
                 }
             }
@@ -862,20 +881,23 @@ public class Network
                 
                 i.dR[t+1] = i.dR[t] + inv_ell*i.dI[t];
                 
-                for(int jx = 0; jx < matrix.length; jx++)
+                if(includeTravel)
                 {
-                    if(jx != i.getIdx())
+                    for(int jx = 0; jx < matrix.length; jx++)
                     {
-                        Zone j = zones[jx];
+                        if(jx != i.getIdx())
+                        {
+                            Zone j = zones[jx];
 
-                        i.dI[t+1] += xi*(matrix[jx][i.getIdx()].getMu(t)*j.dI[t] - matrix[i.getIdx()][jx].getMu(t)*i.dI[t]);
-                        i.dI[t+1] += (matrix[jx][i.getIdx()].getMu(t)*j.I[t] - matrix[i.getIdx()][jx].getMu(t)*i.I[t]);
+                            i.dI[t+1] += xi*(matrix[jx][i.getIdx()].getMu(t)*j.dI[t] - matrix[i.getIdx()][jx].getMu(t)*i.dI[t]);
+                            i.dI[t+1] += (matrix[jx][i.getIdx()].getMu(t)*j.I[t] - matrix[i.getIdx()][jx].getMu(t)*i.I[t]);
 
-                        i.dE[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dE[t] - matrix[i.getIdx()][jx].getMu(t)*i.dE[t];
+                            i.dE[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dE[t] - matrix[i.getIdx()][jx].getMu(t)*i.dE[t];
 
-                        i.dS[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dS[t] - matrix[i.getIdx()][jx].getMu(t)*i.dS[t];
+                            i.dS[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dS[t] - matrix[i.getIdx()][jx].getMu(t)*i.dS[t];
 
-                        i.dR[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dR[t] - matrix[i.getIdx()][jx].getMu(t)*i.dR[t];
+                            i.dR[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dR[t] - matrix[i.getIdx()][jx].getMu(t)*i.dR[t];
+                        }
                     }
                 }
             }
@@ -959,22 +981,24 @@ public class Network
 
                     j.dR[t+1] = j.dR[t] + inv_ell*j.dI[t];
 
-                    for(int kx = 0; kx < matrix.length; kx++)
+                    if(includeTravel)
                     {
-                        if(jx != kx)
+                        for(int kx = 0; kx < matrix.length; kx++)
                         {
-                            Zone k = zones[kx];
+                            if(jx != kx)
+                            {
+                                Zone k = zones[kx];
 
-                            j.dI[t+1] += xi * (matrix[kx][jx].getMu(t)*k.dI[t] - matrix[jx][kx].getMu(t)*j.dI[t]);
+                                j.dI[t+1] += xi * (matrix[kx][jx].getMu(t)*k.dI[t] - matrix[jx][kx].getMu(t)*j.dI[t]);
 
-                            j.dE[t+1] += matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t-1)*j.dE[t];
+                                j.dE[t+1] += matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t-1)*j.dE[t];
 
-                            j.dS[t+1] += matrix[kx][jx].getMu(t)*k.dS[t] - matrix[jx][kx].getMu(t)*j.dS[t];
+                                j.dS[t+1] += matrix[kx][jx].getMu(t)*k.dS[t] - matrix[jx][kx].getMu(t)*j.dS[t];
 
-                            j.dR[t+1] += matrix[kx][jx].getMu(t)*k.dR[t] - matrix[jx][kx].getMu(t)*j.dR[t];
+                                j.dR[t+1] += matrix[kx][jx].getMu(t)*k.dR[t] - matrix[jx][kx].getMu(t)*j.dR[t];
+                            }
                         }
                     }
-
 
 
                 }
@@ -1035,20 +1059,22 @@ public class Network
                 j.dS[t+1] = j.dS[t] - j.r[t_idx]*j.dS[t]*j.I[t]/j.getN()
                         - j.r[t_idx] * j.S[t]/j.getN() * j.dI[t];
 
-                for(int kx = 0; kx < matrix.length; kx++)
+                if(includeTravel)
                 {
-                    if(jx != kx)
+                    for(int kx = 0; kx < matrix.length; kx++)
                     {
-                        Zone k = zones[kx];
+                        if(jx != kx)
+                        {
+                            Zone k = zones[kx];
 
-                        j.dI[t+1] += xi * (matrix[kx][jx].getMu(t)*k.dI[t] - matrix[jx][kx].getMu(t)*j.dI[t]);
+                            j.dI[t+1] += xi * (matrix[kx][jx].getMu(t)*k.dI[t] - matrix[jx][kx].getMu(t)*j.dI[t]);
 
-                        j.dE[t+1] += matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t-1)*j.dE[t];
+                            j.dE[t+1] += matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t-1)*j.dE[t];
 
-                        j.dS[t+1] += matrix[kx][jx].getMu(t)*k.dS[t] - matrix[jx][kx].getMu(t)*j.dS[t];
+                            j.dS[t+1] += matrix[kx][jx].getMu(t)*k.dS[t] - matrix[jx][kx].getMu(t)*j.dS[t];
+                        }
                     }
                 }
-
 
 
             }
@@ -1123,19 +1149,22 @@ public class Network
                 
                 i.R[t+1] = i.R[t] + inv_ell*i.I[t];
                 
-                for(int jx = 0; jx < zones.length; jx++)
+                if(includeTravel)
                 {
-                    if(ix != jx)
+                    for(int jx = 0; jx < zones.length; jx++)
                     {
-                        Zone j = zones[jx];
+                        if(ix != jx)
+                        {
+                            Zone j = zones[jx];
 
-                        i.S[t+1] += matrix[jx][ix].getMu(t) * j.S[t] - matrix[ix][jx].getMu(t) * i.S[t];
+                            i.S[t+1] += matrix[jx][ix].getMu(t) * j.S[t] - matrix[ix][jx].getMu(t) * i.S[t];
 
-                        i.E[t+1] += matrix[jx][ix].getMu(t) * j.E[t] - matrix[ix][jx].getMu(t) * i.E[t];
+                            i.E[t+1] += matrix[jx][ix].getMu(t) * j.E[t] - matrix[ix][jx].getMu(t) * i.E[t];
 
-                        i.I[t+1] += xi*(matrix[jx][ix].getMu(t) * j.I[t] - matrix[ix][jx].getMu(t) * i.I[t]);
+                            i.I[t+1] += xi*(matrix[jx][ix].getMu(t) * j.I[t] - matrix[ix][jx].getMu(t) * i.I[t]);
 
-                        i.R[t+1] += matrix[jx][ix].getMu(t) * j.R[t] - matrix[ix][jx].getMu(t) * i.R[t];
+                            i.R[t+1] += matrix[jx][ix].getMu(t) * j.R[t] - matrix[ix][jx].getMu(t) * i.R[t];
+                        }
                     }
                 }
             }
@@ -1199,19 +1228,22 @@ public class Network
                 }
                 */
                 
-                for(int jx = 0; jx < zones.length; jx++)
+                if(includeTravel)
                 {
-                    if(ix != jx)
+                    for(int jx = 0; jx < zones.length; jx++)
                     {
-                        Zone j = zones[jx];
+                        if(ix != jx)
+                        {
+                            Zone j = zones[jx];
 
-                        i.S[t+1] += matrix[jx][ix].getMu(t) * j.S[t] - matrix[ix][jx].getMu(t) * i.S[t];
+                            i.S[t+1] += matrix[jx][ix].getMu(t) * j.S[t] - matrix[ix][jx].getMu(t) * i.S[t];
 
-                        i.E[t+1] += matrix[jx][ix].getMu(t) * j.E[t] - matrix[ix][jx].getMu(t) * i.E[t];
+                            i.E[t+1] += matrix[jx][ix].getMu(t) * j.E[t] - matrix[ix][jx].getMu(t) * i.E[t];
 
-                        i.I[t+1] += (xi-step*gradient_xi)*(matrix[jx][ix].getMu(t) * j.I[t] - matrix[ix][jx].getMu(t) * i.I[t]);
+                            i.I[t+1] += (xi-step*gradient_xi)*(matrix[jx][ix].getMu(t) * j.I[t] - matrix[ix][jx].getMu(t) * i.I[t]);
 
-                        i.R[t+1] += matrix[jx][ix].getMu(t) * j.R[t] - matrix[ix][jx].getMu(t) * i.R[t];
+                            i.R[t+1] += matrix[jx][ix].getMu(t) * j.R[t] - matrix[ix][jx].getMu(t) * i.R[t];
+                        }
                     }
                 }
 
