@@ -21,7 +21,7 @@ public class Main {
     {
     
         Network network = new Network("MN");
-        network.gradientDescent(new File("variables.txt"));
+        network.gradientDescent();
         network.printTotalError();
     }
     

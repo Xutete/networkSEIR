@@ -48,6 +48,7 @@ public class Network
     private TimePeriod[] lambda_periods, r_periods;
     
     
+    private String scenario;
     
     
     
@@ -56,11 +57,14 @@ public class Network
     
     public Network(String scenario) throws IOException
     {
+        this.scenario = scenario;
         readNetwork(scenario);
     }
     
-    public void save(File file) throws IOException
+    public void save() throws IOException
     {
+        File file = new File(scenario+"/variables.txt");
+        
         PrintStream fileout = new PrintStream(new FileOutputStream(file), true);
         
         fileout.println(inv_sigma+"\t"+inv_ell+"\t"+xi);
@@ -80,8 +84,10 @@ public class Network
         fileout.close();
     }
     
-    public void load(File file) throws IOException
+    public void load() throws IOException
     {
+        File file = new File(scenario+"/variables.txt");
+        
         Scanner filein = new Scanner(file);
         
         inv_sigma = filein.nextDouble();
@@ -448,7 +454,7 @@ public class Network
     double beta = 0.5;
     double min_improvement = 0.01;
     
-    public void gradientDescent(File saveFile) throws IOException 
+    public void gradientDescent() throws IOException 
     {
         for(Zone z : zones)
         {
@@ -492,7 +498,7 @@ public class Network
         
         
         
-        PrintStream fileout =  new PrintStream(new FileOutputStream(new File("log.txt")), true);
+        PrintStream fileout =  new PrintStream(new FileOutputStream(new File(scenario+"/log.txt")), true);
         
         
         System.out.println("Iteration\tObjective\tObj. change\tError\tCPU time (s)");
@@ -578,7 +584,7 @@ public class Network
                     +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9));
             prev_obj = obj;
             
-            save(saveFile);
+            save();
         }
         fileout.close();
         
