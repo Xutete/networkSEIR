@@ -492,8 +492,11 @@ public class Network
         
         
         
+        PrintStream fileout =  new PrintStream(new FileOutputStream(new File("log.txt")), true);
+        
         
         System.out.println("Iteration\tObjective\tObj. change\tError\tCPU time (s)");
+        fileout.println("Iteration\tObjective\tObj. change\tError\tCPU time (s)");
         
         double obj = calculateSEIR();
         double improvement = 100;
@@ -549,6 +552,16 @@ public class Network
 
                 System.out.print("\tAfter: "+obj+"\n");
             }
+            else
+            {
+                resetGradients();
+
+                calculateGradient_xi();
+
+                step = calculateStep(iter, obj);
+                updateVariables(step);
+                obj = calculateSEIR();
+            }
             
             
             time = System.nanoTime() - time;
@@ -561,10 +574,13 @@ public class Network
             
             System.out.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
                     +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9));
+            fileout.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
+                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9));
             prev_obj = obj;
             
             save(saveFile);
         }
+        fileout.close();
         
     }
     
