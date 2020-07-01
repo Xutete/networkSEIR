@@ -654,7 +654,7 @@ public class Network
         {
             for(int pi = 0; pi < lambda_periods.length; pi++)
             {
-                i.lambda[pi] = Math.max(1, i.lambda[pi] - step * i.gradient_lambda[pi]);
+                i.lambda[pi] = Math.min(10, Math.max(1, i.lambda[pi] - step * i.gradient_lambda[pi]));
             }
             
             for(int pi = 0; pi < r_periods.length; pi++)
@@ -1156,7 +1156,7 @@ public class Network
     {
         for(Zone i : zones)
         {
-            i.I[0] = Math.max(1, i.lambda[0] - step*i.gradient_lambda[0]) * i.reportedI[0];
+            i.I[0] = Math.min(10, Math.max(1, i.lambda[0] - step*i.gradient_lambda[0])) * i.reportedI[0];
             i.E[0] = Math.min(i.getN()/100, Math.max(0, i.E0 - step * i.gradient_E0));
             
             
@@ -1220,7 +1220,7 @@ public class Network
             
             for(Zone i : zones)
             {
-                double temp = i.I[t] - Math.max(1, i.lambda[pi_lambda] - step*i.gradient_lambda[pi_lambda]) * i.reportedI[t];
+                double temp = i.I[t] - Math.min(10, Math.max(1, i.lambda[pi_lambda] - step*i.gradient_lambda[pi_lambda])) * i.reportedI[t];
                 output += temp*temp;
             }
         }
