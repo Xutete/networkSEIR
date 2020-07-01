@@ -58,6 +58,9 @@ public class Network
     
     private int run = 0;
     private boolean useLambda = true;
+    
+    
+    private boolean noInitialize = false;
 
     
     public Network(String scenario) throws IOException
@@ -65,14 +68,37 @@ public class Network
         this.scenario = scenario;
         readNetwork(scenario);
     }
+
     
-    // average the variable values
-    public Network(String scenario, Network... networks) throws IOException
+    public void calcAvgValues(int start_run, int end_run) throws IOException
     {
-        this(scenario);
+        Network[] list = new Network[(end_run - start_run)+1];
+        
+        int idx = 0;
+        
+        for(int i = start_run; i <= end_run; i++)
+        {
+            Network saved = new Network(scenario);
+            saved.load(i);
+            list[idx++] = saved;
+        }
+        
+        calcAvgValues(list);
         
         
         
+        noInitialize = true;
+        
+        run = end_run+1;
+        gradientDescent();
+        
+    }
+    
+    
+    public void calcAvgValues(Network... networks)
+    {
+        
+        initialize();
         
         double total = 0.0;
         
@@ -156,8 +182,19 @@ public class Network
         fileout.close();
     }
     
+    public void load(int run) throws IOException
+    {
+        load(""+run);
+    }
+    
+    public void load(String run) throws IOException
+    {
+        load(new File("data/"+scenario+"/output/variables_"+run+".txt"));
+    }
+    
     public void load(File file) throws IOException
     {
+        initialize();
         
         Scanner filein = new Scanner(file);
         
@@ -608,27 +645,12 @@ public class Network
         return best;
     }
     
-    public double gradientDescent() throws IOException 
+    public void initialSolution()
     {
-        long total_time = System.nanoTime();
-        
-        for(Zone z : zones)
+        if(noInitialize)
         {
-            z.initialize(T, r_periods, lambda_periods);
+            return;
         }
-        
-        for(int r = 0; r < matrix.length; r++)
-        {
-            for(int c = 0; c < matrix[r].length; c++)
-            {
-                if(r != c)
-                {
-                    matrix[r][c].initialize(T);
-                }
-            }
-        }
-        
-        
         
         // initial solution
         for(Zone i : zones)
@@ -662,6 +684,37 @@ public class Network
                 i.E0 = 0;
             }
         }
+    }
+    
+    
+    public void initialize()
+    {
+        for(Zone z : zones)
+        {
+            z.initialize(T, r_periods, lambda_periods);
+        }
+        
+        for(int r = 0; r < matrix.length; r++)
+        {
+            for(int c = 0; c < matrix[r].length; c++)
+            {
+                if(r != c)
+                {
+                    matrix[r][c].initialize(T);
+                }
+            }
+        }
+        
+    }
+    
+    public double gradientDescent() throws IOException 
+    {
+        long total_time = System.nanoTime();
+        
+        initialize();
+        
+        
+        initialSolution();
         
         
         
@@ -701,6 +754,7 @@ public class Network
             double step = 0;
             for(Zone i : zones)
             {
+
                 if(useLambda)
                 {
                     resetGradients();
@@ -711,12 +765,14 @@ public class Network
                     obj = calculateSEIR();
                 }
                 
+                
                 resetGradients();
                 calculateGradient_r(i);
                 
                 step = calculateStep(iter, obj);
                 updateVariables(step);
                 obj = calculateSEIR();
+                
                 
                 resetGradients();
                 calculateGradient_E0(i);
@@ -813,11 +869,19 @@ public class Network
         //step = calculateMaxStep();
 
         double change = gradDotX();
+        
+        int inner_iter = 0;
 
         while(calculateSEIRsearch(step, iter) > obj + alpha * step * change)
         {
             step = step*beta;
-
+            
+            inner_iter ++;
+            
+            if(inner_iter > 50)
+            {
+               return 0;
+            }
             //System.out.println("\t"+calculateSEIRsearch(step, iter)+" > "+(obj + alpha * step * change));
         }
 

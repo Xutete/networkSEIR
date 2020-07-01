@@ -1,0 +1,8 @@
+scenario
+T = 153
+lambda_periods = 12
+r_periods = 7
+Iteration	Objective	Obj. change	Error	CPU time (s)
+1	7.781402283081329E8	99.46%	1066.99%	0.0
+2	4.339270290420948E8	44.24%	525.15%	0.0
+3	4.3392702904209423E8	0.00%	525.15%	0.0

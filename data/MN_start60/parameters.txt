@@ -1,0 +1,4 @@
+travel	false
+startTime	60
+numIter	100
+randomize	true

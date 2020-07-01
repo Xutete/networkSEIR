@@ -19,6 +19,7 @@ public class Main {
      */
     public static void main(String[] args) throws IOException
     {
+        /*
         String[] scenarios = new String[]{"MN_start80"};
         
         for(String x : scenarios)
@@ -28,6 +29,11 @@ public class Main {
             System.out.println(network.randomStart(10));
             //network.printTotalError();
         }
+        
+        */
+        
+        Network network = new Network("MN_start80");
+        //network.calcAvgValues(0, 9);
         
 
     }
