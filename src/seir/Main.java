@@ -32,7 +32,8 @@ public class Main {
         
         */
         
-        Network network = new Network("MN");
+        Network network = new Network("MN_travel");
+        network.randomStart(20);
         //network.calcAvgValues(0, 9);
         
 

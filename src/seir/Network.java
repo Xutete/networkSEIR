@@ -517,12 +517,11 @@ public class Network
             {
                 num_iter = Integer.parseInt(value.trim());
             }
-            /*
-            else if(key.equalsIgnoreCase("randomize"))
+            else if(key.equalsIgnoreCase("minImprovement"))
             {
-                randomize = value.equalsIgnoreCase("true");
+                min_improvement = Double.parseDouble(value.trim());
             }
-            */
+            
         }
         filein.close();
         
