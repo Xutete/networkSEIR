@@ -763,11 +763,16 @@ public class Network
     
     public int randomStart(int iter) throws IOException
     {
+        return randomStart(iter, 0);
+    }
+    
+    public int randomStart(int iter, int start_run) throws IOException
+    {
         int best = -1;
         double min = Integer.MAX_VALUE;
         
         randomize = true;
-        for(run = 0; run < iter; run++)
+        for(run = start_run; run < iter+start_run; run++)
         {
             double obj = gradientDescent();
             

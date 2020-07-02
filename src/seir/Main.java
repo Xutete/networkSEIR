@@ -29,12 +29,38 @@ public class Main {
             System.out.println(network.randomStart(10));
             //network.printTotalError();
         }
-        
+                    //network.calcAvgValues(0, 9);
         */
         
-        Network network = new Network("MN_travel");
-        network.randomStart(20);
-        //network.calcAvgValues(0, 9);
+        int num_threads = 4;
+        
+        for(int i = 0; i < num_threads; i++)
+        {
+            final int start_run = i*10;
+            
+            Thread t = new Thread()
+            {
+                public void run()
+                {
+                    try
+                    {
+                        Network network = new Network("MN_travel");
+                        network.randomStart(10, start_run);
+                    }
+                    catch(IOException ex)
+                    {
+                        ex.printStackTrace(System.err);
+                    }
+                }
+            };
+            
+            t.start();
+            
+
+            
+        }
+        
+        
         
 
     }
