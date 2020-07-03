@@ -1383,7 +1383,7 @@ public class Network
 
                                 j.dI[t+1] += xi * (matrix[kx][jx].getMu(t)*k.dI[t] - matrix[jx][kx].getMu(t)*j.dI[t]);
 
-                                j.dE[t+1] += matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t-1)*j.dE[t];
+                                j.dE[t+1] += matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t)*j.dE[t];
 
                                 j.dS[t+1] += matrix[kx][jx].getMu(t)*k.dS[t] - matrix[jx][kx].getMu(t)*j.dS[t];
 
@@ -1461,9 +1461,11 @@ public class Network
 
                             j.dI[t+1] += xi * (matrix[kx][jx].getMu(t)*k.dI[t] - matrix[jx][kx].getMu(t)*j.dI[t]);
 
-                            j.dE[t+1] += matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t-1)*j.dE[t];
+                            j.dE[t+1] += matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t)*j.dE[t];
 
                             j.dS[t+1] += matrix[kx][jx].getMu(t)*k.dS[t] - matrix[jx][kx].getMu(t)*j.dS[t];
+                            
+                            j.dR[t+1] += matrix[kx][jx].getMu(t)*k.dR[t] - matrix[jx][kx].getMu(t)*j.dR[t];
                         }
                     }
                 }
