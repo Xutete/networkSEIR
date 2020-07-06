@@ -229,7 +229,7 @@ public class Network
     public void readNetwork(String dir) throws IOException
     {
         
-        int numZones = 10;
+        int numZones = Integer.MAX_VALUE;
         
         Scanner filein = new Scanner(new File("data/"+dir+"/MN_population.csv"));
         int count = 0;
