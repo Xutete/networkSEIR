@@ -32,7 +32,7 @@ public class Main {
                     //network.calcAvgValues(0, 9);
         */
         
-        int num_threads = 4;
+        int num_threads = 1;
         
         for(int i = 0; i < num_threads; i++)
         {
@@ -45,7 +45,8 @@ public class Main {
                     try
                     {
                         Network network = new Network("MN_travel");
-                        network.randomStart(10, start_run);
+                        //network.gradientDescent();
+                        network.randomStart(1, start_run);
                     }
                     catch(IOException ex)
                     {

@@ -38,7 +38,7 @@ public class Network
     
     private double gradient_inv_sigma, gradient_inv_ell;
     
-    private double xi = 0.5; // reduction in travel among infected individuals
+    private double xi = 0.179; // reduction in travel among infected individuals
     private double gradient_xi;
     
     private int T;
@@ -223,7 +223,7 @@ public class Network
     public void readNetwork(String dir) throws IOException
     {
         
-        boolean onlyFirst = false;
+        int numZones = 2;
         
         Scanner filein = new Scanner(new File("data/"+dir+"/MN_population.csv"));
         int count = 0;
@@ -234,10 +234,7 @@ public class Network
         }
         filein.close();
         
-        if(onlyFirst)
-        {
-            count = 1;
-        }
+        count = Math.min(numZones, count);
         
         zones = new Zone[count];
         
@@ -254,7 +251,7 @@ public class Network
             double pop = chopper.nextDouble();
             zones[idx++] = new Zone(county, pop);
             
-            if(onlyFirst)
+            if(idx >= zones.length)
             {
                 break;
             }
@@ -626,6 +623,11 @@ public class Network
                     int dest = chopper.nextInt();
                     double demand = chopper.nextDouble();
                     
+                    
+                    if(!zoneLookup.containsKey(source) || !zoneLookup.containsKey(dest))
+                    {
+                        continue;
+                    }
                     int r = zoneLookup.get(source);
                     int c = zoneLookup.get(dest);
                     
@@ -759,6 +761,7 @@ public class Network
     int num_iter = 100;
     double alpha = 0.4;
     double beta = 0.5;
+    int max_step_iter = 50;
     double min_improvement = 0.01;
     
     public int randomStart(int iter) throws IOException
@@ -852,6 +855,8 @@ public class Network
     
     public double gradientDescent() throws IOException 
     {
+        
+
         long total_time = System.nanoTime();
         
         initialize();
@@ -897,7 +902,8 @@ public class Network
             double step = 0;
             for(Zone i : zones)
             {
-
+                //System.out.println(i);
+                
                 if(useLambda)
                 {
                     resetGradients();
@@ -1014,21 +1020,33 @@ public class Network
         double change = gradDotX();
         
         int inner_iter = 0;
+        
+        double output;
 
-        while(calculateSEIRsearch(step, iter) > obj + alpha * step * change)
+        while( (output = calculateSEIRsearch(step, iter)) > obj + alpha * step * change)
         {
             step = step*beta;
             
             inner_iter ++;
             
-            if(inner_iter > 50)
+            if(inner_iter > max_step_iter)
             {
-               return 0;
+                step = 0;
+                break;
             }
-            //System.out.println("\t"+calculateSEIRsearch(step, iter)+" > "+(obj + alpha * step * change));
+            //System.out.println("\t\t"+output+" > "+(obj + alpha * step * change)+"\t"+step+" "+inner_iter);
         }
+        
+        output = calculateSEIRsearch(step, iter);
 
-        //System.out.println("\t"+calculateSEIRsearch(step, iter)+" > "+(obj + alpha * step * change));
+        //System.out.println("\t"+output+" > "+(obj + alpha * step * change)+"\t"+step);
+        
+        if((""+output).equals("NaN"))
+        {
+            printdebug = true;
+            System.out.println("\t"+output+" > "+(obj + alpha * step * change)+"\t"+step);
+            calculateSEIRsearch(step, iter);
+        }
             
         return step;
     }
@@ -1363,6 +1381,11 @@ public class Network
                     }
 
                     double N = j.getN(t);
+                    
+                    if(N==0)
+                    {
+                        System.out.println("N is 0");
+                    }
                     double dN = j.dS[t] + j.dE[t] + j.dI[t] + j.dR[t];
                     j.dE[t+1] = j.dE[t] + drdr * j.S[t] * j.I[t]/j.getN(t) + j.r[t_idx]*j.dS[t]*j.I[t]/N
                             + j.r[t_idx] * j.S[t]/N * j.dI[t] - j.r[t_idx]*j.S[t]*j.I[t]/N/N*dN
@@ -1580,19 +1603,24 @@ public class Network
         return output;
     }
     
+    private boolean printdebug = false;
     
     public double calculateSEIRsearch(double step, int iter)
     {
+        
         for(Zone i : zones)
         {
             i.I[startTime] = Math.min(10, Math.max(1, i.lambda[index_lambda(startTime)] - step*i.gradient_lambda[index_lambda(startTime)])) * i.reportedI[startTime];
             i.E[startTime] = Math.min(i.getN()/100, Math.max(0, i.E0 - step * i.gradient_E0));
             
-            
+
             i.R[startTime] = 0;
             i.S[startTime] = i.getN() - i.I[startTime] - i.R[startTime] - i.E[startTime];
             
-
+            if(printdebug)
+            {
+                System.out.println("start "+i.I[startTime]+" "+i.E[startTime]);
+            }
             
         }
         
@@ -1604,7 +1632,16 @@ public class Network
             {
                 Zone i = zones[ix];
                 
-                double fSE = Math.min(i.S[t], Math.min(20, Math.max(0, i.r[pi_r] - step*i.gradient_r[pi_r])) * i.S[t] * i.I[t]/i.getN(t));
+                if(i.getN(t) == 0)
+                {
+                    System.out.println("N is 0\t2");
+                }
+                double fSE = Math.min(i.S[t], Math.min(20, Math.max(0, i.r[pi_r] - step*i.gradient_r[pi_r])) * i.S[t] * i.I[t]/i.getN());
+                
+                if((""+i.gradient_r[pi_r]).equals("NaN"))
+                {
+                    System.out.println("grad r is nan");
+                }
 
                 i.S[t+1] = i.S[t] - fSE ;
                 
@@ -1613,6 +1650,11 @@ public class Network
                 i.I[t+1] = i.I[t] + (inv_sigma - step*gradient_inv_sigma)*i.E[t] - (inv_ell - step*gradient_inv_ell)*i.I[t];
                 
                 i.R[t+1] = i.R[t] + (inv_ell - step*gradient_inv_ell)*i.I[t];
+                
+                if(printdebug)
+                {
+                    System.out.println(t+"\t"+fSE+"\t"+i.E[t+1]+"\t"+i.I[t+1]+"\t"+i.R[t+1]);
+                }
                 
                 /*
                 if(iter == 2)
