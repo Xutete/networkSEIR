@@ -22,6 +22,7 @@ import java.util.Scanner;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Random;
 
 /**
  *
@@ -62,9 +63,16 @@ public class Network
     
     private boolean noInitialize = false;
 
+    private int randomSeed;
+    private Random rand;
     
     public Network(String scenario) throws IOException
     {
+        //randomSeed = (int)Math.round(100000*Math.random());
+        randomSeed = 89665;
+        rand = new Random(randomSeed);
+        
+        System.out.println("random seed: "+randomSeed);
         this.scenario = scenario;
         readNetwork(scenario);
     }
@@ -223,7 +231,7 @@ public class Network
     public void readNetwork(String dir) throws IOException
     {
         
-        int numZones = 2;
+        int numZones = 10;
         
         Scanner filein = new Scanner(new File("data/"+dir+"/MN_population.csv"));
         int count = 0;
@@ -803,27 +811,35 @@ public class Network
         {
             for(int pi = 0; pi < lambda_periods.length; pi++)
             {
-                i.lambda[pi] = 1;
+                
                 
                 if(randomize)
                 {
-                    i.lambda[pi] = 1 + Math.random()*2;
+                    i.lambda[pi] = 1 + rand.nextDouble()*2;
+                }
+                else
+                {
+                    i.lambda[pi] = 1;
                 }
             }
             
             for(int pi = 0; pi < r_periods.length; pi++)
             {
-                i.r[pi] = 0;
+                
                 
                 if(randomize)
                 {
-                    i.lambda[pi] = Math.random()*4;
+                    i.lambda[pi] = rand.nextDouble()*4;
+                }
+                else
+                {
+                    i.r[pi] = 0;
                 }
             }
             
             if(randomize)
             {
-                i.E0 = i.getN()/100*Math.random();
+                i.E0 = i.getN()/100*rand.nextDouble();
             }
             else
             {
