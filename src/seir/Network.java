@@ -68,11 +68,9 @@ public class Network
     
     public Network(String scenario) throws IOException
     {
-        //randomSeed = (int)Math.round(100000*Math.random());
-        randomSeed = 89665;
-        rand = new Random(randomSeed);
         
-        System.out.println("random seed: "+randomSeed);
+        
+        
         this.scenario = scenario;
         readNetwork(scenario);
     }
@@ -875,6 +873,10 @@ public class Network
 
         long total_time = System.nanoTime();
         
+        randomSeed = (int)Math.round(100000*Math.random());
+        rand = new Random(randomSeed);
+        
+        
         initialize();
         
         
@@ -899,6 +901,10 @@ public class Network
         fileout.println("include travel: "+includeTravel);
         System.out.println("randomize "+randomize);
         fileout.println("randomize "+randomize);
+        if(randomize)
+        {
+            System.out.println("random seed: "+randomSeed);
+        }
         
         
         System.out.println("Iteration\tObjective\tObj. change\tError\tCPU time");
@@ -910,6 +916,8 @@ public class Network
         System.out.println("0\t"+obj);
         
         double prev_obj = obj;
+        
+        double updated_obj = obj;
         
         for(int iter = 1; iter <= num_iter && improvement > min_improvement; iter++)
         {   
@@ -924,11 +932,20 @@ public class Network
                 {
                     resetGradients();
                     calculateGradient_lambda(i);
+                    
 
                     step = calculateStep(iter, obj);
                     updateVariables(step);
+                    updated_obj = obj;
                     obj = calculateSEIR();
+                    
+                    if((updated_obj-obj)/updated_obj*100.0 < -0.009)
+                    {
+                        System.out.println("\t"+i+"-lambda\t"+obj+"\t"+updated_obj+"\t"+step+"\t"+String.format("%.2f", (updated_obj-obj)/updated_obj*100.0)+"\t"+calculateSEIRsearch(0, 0));
+                    }
                 }
+                
+                
                 
                 
                 resetGradients();
@@ -936,7 +953,13 @@ public class Network
                 
                 step = calculateStep(iter, obj);
                 updateVariables(step);
+                updated_obj = obj;
                 obj = calculateSEIR();
+                
+                if((updated_obj-obj)/updated_obj*100.0 < -0.009)
+                {
+                    System.out.println("\t"+i+"-r\t"+obj+"\t"+updated_obj+"\t"+step+"\t"+String.format("%.2f", (updated_obj-obj)/updated_obj*100.0)+"\t"+calculateSEIRsearch(0, 0));
+                }
                 
                 
                 resetGradients();
@@ -944,7 +967,13 @@ public class Network
 
                 step = calculateStep(iter, obj);
                 updateVariables(step);
+                updated_obj = obj;
                 obj = calculateSEIR();
+                
+                if((updated_obj-obj)/updated_obj*100.0 < -0.009)
+                {
+                    System.out.println("\t"+i+"-E0\t"+obj+"\t"+updated_obj+"\t"+step+"\t"+String.format("%.2f", (updated_obj-obj)/updated_obj*100.0)+"\t"+calculateSEIRsearch(0, 0));
+                }
                 
                 //System.out.println("\t"+obj+"\t"+step);
             }
@@ -1055,8 +1084,12 @@ public class Network
         
         output = calculateSEIRsearch(step, iter);
 
-        //System.out.println("\t"+output+" > "+(obj + alpha * step * change)+"\t"+step);
-        
+        /*
+        if(iter == 24)
+        {
+            System.out.println("\t"+output+" > "+(obj + alpha * step * change)+"\t"+step);
+        }
+        */
         if((""+output).equals("NaN"))
         {
             printdebug = true;
@@ -1556,6 +1589,10 @@ public class Network
     
     public double calculateSEIR()
     {
+
+        return calculateSEIRsearch(0, 0);
+
+        /*
         for(Zone i : zones)
         {
             i.I[startTime] = i.lambda[index_lambda(startTime)] * i.reportedI[startTime];
@@ -1617,6 +1654,7 @@ public class Network
         }
         
         return output;
+        */
     }
     
     private boolean printdebug = false;
