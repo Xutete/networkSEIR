@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Random;
 
+
 /**
  *
  * @author micha
@@ -39,8 +40,10 @@ public class Network
     
     private double gradient_inv_sigma, gradient_inv_ell;
     
-    private double xi = 0.179; // reduction in travel among infected individuals
-    private double gradient_xi;
+    private double xi = 0.2; // reduction in travel among infected individuals
+    private double xi_E = 0.8; // reduction in travel among exposed individuals
+    private double gradient_xi, gradient_xiE;
+    private double removed_weight = 0.0;
     
     private int T;
     
@@ -75,6 +78,20 @@ public class Network
         readNetwork(scenario);
     }
 
+    public Zone[] getZones()
+    {
+        return zones;
+    }
+    
+    public int getStartTime()
+    {
+        return startTime;
+    }
+    
+    public int getT()
+    {
+        return T;
+    }
     
     public void calcAvgValues(int start_run, int end_run) throws IOException
     {
@@ -171,7 +188,7 @@ public class Network
         
         PrintStream fileout = new PrintStream(new FileOutputStream(file), true);
         
-        fileout.println(inv_sigma+"\t"+inv_ell+"\t"+xi+"\t"+includeTravel+"\t"+startTime);
+        fileout.println(inv_sigma+"\t"+inv_ell+"\t"+xi+"\t"+xi_E+"\t"+includeTravel+"\t"+startTime+"\t"+removed_weight);
         for(Zone i : zones)
         {
             for(int pi = 0; pi < lambda_periods.length; pi++)
@@ -207,8 +224,10 @@ public class Network
         inv_sigma = filein.nextDouble();
         inv_ell = filein.nextDouble();
         xi = filein.nextDouble();
+        xi_E = filein.nextDouble();
         includeTravel = filein.next().equalsIgnoreCase("true");
         startTime = filein.nextInt();
+        removed_weight = filein.nextDouble();
         
         for(Zone i : zones)
         {
@@ -223,13 +242,19 @@ public class Network
             i.E0 = filein.nextDouble();
         }
         filein.close();
+        
+        calculateSEIR();
     }
     
+    public String getDirectory()
+    {
+        return "data/"+scenario;
+    }
     
     public void readNetwork(String dir) throws IOException
     {
         
-        int numZones = Integer.MAX_VALUE;
+        int numZones = 10;
         
         Scanner filein = new Scanner(new File("data/"+dir+"/MN_population.csv"));
         int count = 0;
@@ -726,16 +751,17 @@ public class Network
         catch(IOException ex){}
     }
     
+
+    
     public void printTotalError(PrintStream out) throws IOException
     {
-        if(zones.length == 1)
+        out.print("time\ttotal error\t% error\tcount\tpredicted");
+        
+        for(Zone i : zones)
         {
-            out.println("time\ttotal error\t% error\tcount\tpredicted\tlambda\tr");
+            out.print("\t"+i+" reported\t"+i+" predicted\t"+i+"% error");
         }
-        else
-        {
-            out.println("time\ttotal error\t% error\tcount\tpredicted");
-        }
+        out.println();
         
         for(int t = startTime; t < T; t++)
         {
@@ -751,16 +777,17 @@ public class Network
                 predicted += i.I[t];
                 count += i.reportedI[t];
             }
+
+            out.print(t+"\t"+error+"\t"+String.format("%.2f\t%.2f\t%.2f", 100.0*error/count, count, predicted));
             
-            if(zones.length == 1)
+            for(Zone i : zones)
             {
-                out.println(t+"\t"+error+"\t"
-                    +String.format("%.2f\t%.2f\t%.2f\t%.2f\t%.2f", 100.0*error/count, count, predicted, zones[0].lambda[index_lambda(t)],zones[0].r[index_r(t)]));
+                double predictedi = i.I[t];
+                double reportedi = i.lambda[index_lambda(t)]*i.reportedI[t];
+                double errori = Math.abs(i.I[t] - i.lambda[index_lambda(t)]*i.reportedI[t])/i.reportedI[t];
+                out.printf("\t%.2f\t%.2f\t%.2f", reportedi, predictedi, errori*100.0);
             }
-            else
-            {
-                out.println(t+"\t"+error+"\t"+String.format("%.2f\t%.2f\t%.2f", 100.0*error/count, count, predicted));
-            }
+            out.println();
         }
     }
     
@@ -817,7 +844,7 @@ public class Network
                 }
                 else
                 {
-                    i.lambda[pi] = 1;
+                    i.lambda[pi] = 2;
                 }
             }
             
@@ -827,7 +854,7 @@ public class Network
                 
                 if(randomize)
                 {
-                    i.lambda[pi] = rand.nextDouble()*4;
+                    i.r[pi] = rand.nextDouble()*4;
                 }
                 else
                 {
@@ -841,8 +868,19 @@ public class Network
             }
             else
             {
-                i.E0 = 0;
+                i.E0 = i.reportedI[startTime]*i.lambda[index_lambda(startTime)] * 1/inv_sigma;
             }
+        }
+        
+        if(randomize)
+        {
+            xi = Math.random();
+            xi_E = Math.random();
+        }
+        else
+        {
+            xi = 0.2;
+            xi_E = 1;
         }
     }
     
@@ -908,7 +946,7 @@ public class Network
         
         
         System.out.println("Iteration\tObjective\tObj. change\tError\tCPU time");
-        fileout.println("Iteration\tObjective\tObj. change\tError\tCPU time (s)");
+        fileout.println("Iteration\tObjective\tObj. change\tI Error\tCPU time (s)\t R error");
         
         double obj = calculateSEIR();
         double improvement = 100;
@@ -945,7 +983,10 @@ public class Network
                     }
                 }
                 
-                
+            }
+            
+            for(Zone i : zones)
+            {
                 
                 
                 resetGradients();
@@ -960,7 +1001,10 @@ public class Network
                 {
                     System.out.println("\t"+i+"-r\t"+obj+"\t"+updated_obj+"\t"+step+"\t"+String.format("%.2f", (updated_obj-obj)/updated_obj*100.0)+"\t"+calculateSEIRsearch(0, 0));
                 }
-                
+            }
+            
+            for(Zone i : zones)
+            {
                 
                 resetGradients();
                 calculateGradient_E0(i);
@@ -994,18 +1038,22 @@ public class Network
 
                 System.out.print("\tAfter: "+obj+"\n");
             }
-            /*
+            
             else
             {
                 resetGradients();
 
+                //System.out.print(xi+" "+xi_E+"\t");
                 calculateGradient_xi();
+                //calculateGradient_xiE();
 
                 step = calculateStep(iter, obj);
                 updateVariables(step);
                 obj = calculateSEIR();
+                
+                //System.out.println("xi step: "+(step * gradient_xi)+" "+(step*gradient_xiE)+"\t"+xi+" "+xi_E);
             }
-            */
+            
             save();
             
             time = System.nanoTime() - time;
@@ -1015,11 +1063,12 @@ public class Network
             improvement = 100.0*(prev_obj - obj) / prev_obj;
             
             double error = calculateInfectedError();
+            double error2 = calculateRemovedError();
             
             System.out.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
-                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9)+"s");
+                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9)+"s"+"\t"+String.format("%.2f", error2)+"%");
             fileout.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
-                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9)+"s");
+                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9)+"s"+String.format("%.2f", error2)+"%");
             prev_obj = obj;
             
             
@@ -1034,6 +1083,9 @@ public class Network
         fileout = new PrintStream(new FileOutputStream(new File("data/"+scenario+"/output/total_error_"+run+".txt")));
         printTotalError(fileout);
         fileout.close();
+        
+        System.out.println("xi: "+xi);
+        System.out.println("xiE: "+xi_E);
         
         return obj;
     }
@@ -1051,6 +1103,26 @@ public class Network
             {
                 total += i.reportedI[t];
                 error += Math.abs(i.I[t] - i.lambda[pi] * i.reportedI[t]);
+            }
+        }
+        
+        return 100.0*error/total;
+    }
+    
+    
+    public double calculateRemovedError()
+    {
+        double error = 0.0;
+        double total = 0.0;
+        
+        for(int t = startTime; t < T; t++)
+        {
+            int pi = index_lambda(t);
+            
+            for(Zone i : zones)
+            {
+                total += i.reportedR[t];
+                error += Math.abs(i.R[t] - i.lambda[pi] * i.reportedR[t]);
             }
         }
         
@@ -1105,6 +1177,7 @@ public class Network
         gradient_inv_sigma = 0;
         gradient_inv_ell = 0;
         gradient_xi = 0;
+        gradient_xiE = 0;
         
         for(Zone i : zones)
         {
@@ -1124,7 +1197,10 @@ public class Network
     
     public void updateVariables(double step)
     {
-        xi = xi - step*gradient_xi;
+        xi = Math.min(1, Math.max(0, xi - step*gradient_xi));
+        xi_E = Math.min(1, Math.max(0, xi_E - step*gradient_xiE));
+        
+        
         inv_sigma = inv_sigma - step*gradient_inv_sigma;
         inv_ell = inv_ell - step*gradient_inv_ell;
         
@@ -1351,7 +1427,7 @@ public class Network
                             i.dI[t+1] += xi*(matrix[jx][i.getIdx()].getMu(t)*j.dI[t] - matrix[i.getIdx()][jx].getMu(t)*i.dI[t]);
                             i.dI[t+1] += (matrix[jx][i.getIdx()].getMu(t)*j.I[t] - matrix[i.getIdx()][jx].getMu(t)*i.I[t]);
 
-                            i.dE[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dE[t] - matrix[i.getIdx()][jx].getMu(t)*i.dE[t];
+                            i.dE[t+1] += xi_E * (matrix[jx][i.getIdx()].getMu(t)*j.dE[t] - matrix[i.getIdx()][jx].getMu(t)*i.dE[t]);
 
                             i.dS[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dS[t] - matrix[i.getIdx()][jx].getMu(t)*i.dS[t];
 
@@ -1371,6 +1447,68 @@ public class Network
             for(Zone i : zones)
             {
                 gradient_xi += 2* (i.I[t] - i.lambda[pi]*i.reportedI[t])*i.dI[t];
+                gradient_xi += removed_weight * (2* (i.R[t] - i.lambda[pi]*i.reportedR[t])*i.dR[t]);
+            }
+        }
+    }
+    
+    public void calculateGradient_xiE()
+    {
+        for(Zone i : zones)
+        {
+            i.resetDerivs();
+        }
+        
+        for(int t = startTime; t < T-1; t++)
+        {
+            int pi = index_r(t);
+            for(Zone i : zones)
+            {
+                double dN = i.dS[t] + i.dE[t] + i.dI[t] + i.dR[t];
+                double N = i.getN(t);
+                
+                i.dI[t+1] = i.dI[t] + inv_sigma * i.dE[t]  - inv_ell * i.dI[t];
+                
+                i.dE[t+1] = i.dE[t] + i.r[pi]*i.dS[t]*i.I[t]/N + i.r[pi]*i.S[t]/N*i.dI[t] 
+                        - i.r[pi]*i.S[t]*i.I[t]/N/N*dN - inv_sigma*i.dE[t];
+                
+                i.dS[t+1] = i.dS[t] - i.r[pi]*i.dS[t]*i.I[t]/N - i.r[pi]*i.S[t]/N*i.dI[t] +
+                        i.r[pi]*i.S[t]*i.I[t]/N/N*dN;
+                
+                i.dR[t+1] = i.dR[t] + inv_ell*i.dI[t];
+                
+                if(includeTravel)
+                {
+                    for(int jx = 0; jx < matrix.length; jx++)
+                    {
+                        if(jx != i.getIdx())
+                        {
+                            Zone j = zones[jx];
+
+                            i.dI[t+1] += xi*(matrix[jx][i.getIdx()].getMu(t)*j.dI[t] - matrix[i.getIdx()][jx].getMu(t)*i.dI[t]);
+
+                            i.dE[t+1] += xi_E * (matrix[jx][i.getIdx()].getMu(t)*j.dE[t] - matrix[i.getIdx()][jx].getMu(t)*i.dE[t]);
+                            i.dE[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.E[t] - matrix[i.getIdx()][jx].getMu(t)*i.E[t];
+
+                            i.dS[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dS[t] - matrix[i.getIdx()][jx].getMu(t)*i.dS[t];
+
+                            i.dR[t+1] += matrix[jx][i.getIdx()].getMu(t)*j.dR[t] - matrix[i.getIdx()][jx].getMu(t)*i.dR[t];
+                        }
+                    }
+                }
+            }
+        }
+        
+        gradient_xiE = 0;
+        
+        for(int t = startTime; t < T; t++)
+        {
+            int pi = index_lambda(t);
+            
+            for(Zone i : zones)
+            {
+                gradient_xiE += 2* (i.I[t] - i.lambda[pi]*i.reportedI[t])*i.dI[t];
+                gradient_xiE += removed_weight * (2* (i.R[t] - i.lambda[pi]*i.reportedR[t])*i.dR[t]);
             }
         }
     }
@@ -1384,6 +1522,7 @@ public class Network
             for(int t = Math.max(startTime, lambda_periods[pi].getStart()); t < lambda_periods[pi].getEnd() && t < T; t++)
             {
                 sum -= 2* (i.I[t] - i.lambda[pi] * i.reportedI[t]) * i.reportedI[t];
+                sum -= removed_weight * (2* (i.R[t] - i.lambda[pi] * i.reportedR[t]) * i.reportedR[t]);
             }
 
             i.gradient_lambda[pi] = sum;
@@ -1455,7 +1594,7 @@ public class Network
 
                                 j.dI[t+1] += xi * (matrix[kx][jx].getMu(t)*k.dI[t] - matrix[jx][kx].getMu(t)*j.dI[t]);
 
-                                j.dE[t+1] += matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t)*j.dE[t];
+                                j.dE[t+1] += xi_E * (matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t)*j.dE[t]);
 
                                 j.dS[t+1] += matrix[kx][jx].getMu(t)*k.dS[t] - matrix[jx][kx].getMu(t)*j.dS[t];
 
@@ -1478,7 +1617,7 @@ public class Network
                 for(Zone j : zones)
                 {
                     i.gradient_r[pix] += 2*(j.I[t] - j.lambda[t_idx] * j.reportedI[t])* j.dI[t];
-
+                    i.gradient_r[pix] += removed_weight * (2*(j.R[t] - j.lambda[t_idx] * j.reportedR[t])* j.dR[t]);
                 }
             }
 
@@ -1533,7 +1672,7 @@ public class Network
 
                             j.dI[t+1] += xi * (matrix[kx][jx].getMu(t)*k.dI[t] - matrix[jx][kx].getMu(t)*j.dI[t]);
 
-                            j.dE[t+1] += matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t)*j.dE[t];
+                            j.dE[t+1] += xi_E * (matrix[kx][jx].getMu(t)*k.dE[t] - matrix[jx][kx].getMu(t)*j.dE[t]);
 
                             j.dS[t+1] += matrix[kx][jx].getMu(t)*k.dS[t] - matrix[jx][kx].getMu(t)*j.dS[t];
                             
@@ -1555,7 +1694,7 @@ public class Network
             for(Zone j : zones)
             {
                 i.gradient_E0 += 2*(j.I[t] - j.lambda[pi]*j.reportedI[t]) * j.dI[t];
-
+                i.gradient_E0 += removed_weight * (2*(j.R[t] - j.lambda[pi]*j.reportedR[t]) * j.dR[t]);
 
             }
         }
@@ -1678,6 +1817,9 @@ public class Network
             
         }
         
+        double newxi = Math.min(1, Math.max(0, xi-step*gradient_xi));
+        double newxiE = Math.min(1, Math.max(0, xi_E-step*gradient_xiE));
+        
         for(int t = startTime; t < T-1; t++)
         {
             int pi_r = index_r(t);
@@ -1728,9 +1870,9 @@ public class Network
 
                             i.S[t+1] += matrix[jx][ix].getMu(t) * j.S[t] - matrix[ix][jx].getMu(t) * i.S[t];
 
-                            i.E[t+1] += matrix[jx][ix].getMu(t) * j.E[t] - matrix[ix][jx].getMu(t) * i.E[t];
+                            i.E[t+1] +=newxiE * (matrix[jx][ix].getMu(t) * j.E[t] - matrix[ix][jx].getMu(t) * i.E[t]);
 
-                            i.I[t+1] += (xi-step*gradient_xi)*(matrix[jx][ix].getMu(t) * j.I[t] - matrix[ix][jx].getMu(t) * i.I[t]);
+                            i.I[t+1] += newxi*(matrix[jx][ix].getMu(t) * j.I[t] - matrix[ix][jx].getMu(t) * i.I[t]);
 
                             i.R[t+1] += matrix[jx][ix].getMu(t) * j.R[t] - matrix[ix][jx].getMu(t) * i.R[t];
                         }
@@ -1750,10 +1892,14 @@ public class Network
             {
                 double temp = i.I[t] - Math.min(10, Math.max(1, i.lambda[pi_lambda] - step*i.gradient_lambda[pi_lambda])) * i.reportedI[t];
                 output += temp*temp;
+                
+                temp = i.R[t] - Math.min(10, Math.max(1, i.lambda[pi_lambda] - step*i.gradient_lambda[pi_lambda])) * i.reportedR[t];
+                output += removed_weight * temp*temp;
             }
         }
 
         
         return output;
     }
+
 }

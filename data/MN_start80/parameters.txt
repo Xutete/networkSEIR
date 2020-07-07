@@ -1,4 +1,0 @@
-travel	false
-startTime	80
-numIter	200
-randomize	true

@@ -1,2 +1,0 @@
-Iteration	Objective	Obj. change	Error	CPU time (s)
-1	553.5408204191699	0.00%	100.02%	0.0

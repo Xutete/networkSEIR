@@ -45,8 +45,13 @@ public class Main {
                     try
                     {
                         Network network = new Network("MN_travel");
+                        network.load(0);
                         //network.gradientDescent();
-                        network.randomStart(1, start_run);
+                        //network.randomStart(10, start_run);
+                        
+                        PlotErrors test = new PlotErrors(network);
+                        
+                        //network.printTotalError();
                     }
                     catch(IOException ex)
                     {

@@ -1,1 +1,3 @@
 travel	true
+startTime	60
+maxIter	50
