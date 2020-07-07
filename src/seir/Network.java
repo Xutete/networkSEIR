@@ -254,9 +254,40 @@ public class Network
     public void readNetwork(String dir) throws IOException
     {
         
-        int numZones = 10;
+        int numZones = Integer.MAX_VALUE;
         
-        Scanner filein = new Scanner(new File("data/"+dir+"/MN_population.csv"));
+        Scanner filein = new Scanner(new File("data/"+scenario+"/parameters.txt"));
+        while(filein.hasNext())
+        {
+            String key = filein.next();
+            String value = filein.next();
+            
+            if(key.equalsIgnoreCase("travel"))
+            {
+                includeTravel = value.equalsIgnoreCase("true");
+            }
+            else if(key.equalsIgnoreCase("startTime"))
+            {
+                startTime = Integer.parseInt(value.trim());
+            }
+            else if(key.equalsIgnoreCase("numIter"))
+            {
+                num_iter = Integer.parseInt(value.trim());
+            }
+            else if(key.equalsIgnoreCase("minImprovement"))
+            {
+                min_improvement = Double.parseDouble(value.trim());
+            }
+            else if(key.equalsIgnoreCase("maxZones"))
+            {
+                numZones = Integer.parseInt(value.trim());
+            }
+        }
+        filein.close();
+        
+        
+        
+        filein = new Scanner(new File("data/"+dir+"/MN_population.csv"));
         int count = 0;
         while(filein.hasNext())
         {
@@ -527,31 +558,6 @@ public class Network
         }
 
         
-        filein = new Scanner(new File("data/"+scenario+"/parameters.txt"));
-        while(filein.hasNext())
-        {
-            String key = filein.next();
-            String value = filein.next();
-            
-            if(key.equalsIgnoreCase("travel"))
-            {
-                includeTravel = value.equalsIgnoreCase("true");
-            }
-            else if(key.equalsIgnoreCase("startTime"))
-            {
-                startTime = Integer.parseInt(value.trim());
-            }
-            else if(key.equalsIgnoreCase("numIter"))
-            {
-                num_iter = Integer.parseInt(value.trim());
-            }
-            else if(key.equalsIgnoreCase("minImprovement"))
-            {
-                min_improvement = Double.parseDouble(value.trim());
-            }
-            
-        }
-        filein.close();
         
         
         
