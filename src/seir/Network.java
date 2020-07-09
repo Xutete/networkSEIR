@@ -954,18 +954,23 @@ public class Network
         PrintStream fileout =  new PrintStream(new FileOutputStream(new File("data/"+scenario+"/output/log_"+run+".txt"), loaded), true);
         
         
+        if(!loaded)
+        {
+        
+            fileout.println(scenario + " run "+run);
+            fileout.println("T = "+T);
+            fileout.println("lambda_periods = "+lambda_periods.length);
+            fileout.println("r_periods = "+r_periods.length);
+            fileout.println("include travel: "+includeTravel);
+            fileout.println("randomize "+randomize);
+        }
+        
         System.out.println(scenario + " run "+run);
-        fileout.println(scenario + " run "+run);
         System.out.println("T = "+T);
-        fileout.println("T = "+T);
         System.out.println("lambda_periods = "+lambda_periods.length);
-        fileout.println("lambda_periods = "+lambda_periods.length);
         System.out.println("r_periods = "+r_periods.length);
-        fileout.println("r_periods = "+r_periods.length);
         System.out.println("include travel: "+includeTravel);
-        fileout.println("include travel: "+includeTravel);
         System.out.println("randomize "+randomize);
-        fileout.println("randomize "+randomize);
         
         
         if(randomize)
@@ -1110,7 +1115,7 @@ public class Network
             System.out.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
                     +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9)+"s"+"\t"+String.format("%.2f", error2)+"%");
             fileout.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
-                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9)+"s"+String.format("%.2f", error2)+"%");
+                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9)+"s"+"\t"+String.format("%.2f", error2)+"%");
             prev_obj = obj;
             
             
