@@ -365,15 +365,12 @@ public class MapViewer extends JMapViewer
 
                 map2.setZoom(getZoom());
                 map2.setCenter(getCenter());
-                map2.setZoom(getZoom()+3);
+                map2.setZoom(getZoom()+1);
                 map2.setScale(2);
                 
                 int zoom = map2.getZoom();
                 
-                JFrame frame = new JFrame();
-                frame.add(map2);
-                frame.setSize(map2.getWidth()+100, map2.getHeight()+100);
-                frame.setVisible(true);
+
                 
                 
                 
@@ -383,35 +380,26 @@ public class MapViewer extends JMapViewer
                 
                 BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
                 
-                Graphics g2 = image.getGraphics();
+                Graphics g = image.getGraphics();
                 
-                for(y = 0; y < height; y += 1000)
+                for(int i = 0; i < 10; i++)
                 {
-                    BufferedImage temp = new BufferedImage(map2.getWidth(), map2.getHeight(), BufferedImage.TYPE_INT_ARGB);
-
-                    map2.setZoomControlsVisible(false);
-
-
-                    //map2.setDisplayPosition(new Point(getWidth()/2, getHeight()/2), getCenter(), zoom);
-                    
+                    map2.paintComponent(g);
                     try
                     {
-                        Thread.sleep(10*1000);
+                        Thread.sleep(1000);
                     }
-                    catch(Exception ex){
+                    catch(Exception ex)
+                    {
                         ex.printStackTrace(System.err);
                     }
-
-                    Graphics g = temp.getGraphics();
-
-                    map2.print(g);
                 
-                    g2.drawImage(image, 0, y, image.getWidth(), image.getHeight(), null);
+                    
                 }
-                
+                map2.paintComponent(g);
 
-                //g.setColor(Color.black);
-                //g.drawRect(0, 0, image.getWidth()-1, image.getHeight()-1);
+                g.setColor(Color.black);
+                g.drawRect(0, 0, image.getWidth()-1, image.getHeight()-1);
 
                 int minx = image.getWidth();
                 int miny = image.getHeight();
@@ -445,7 +433,7 @@ public class MapViewer extends JMapViewer
 
 
                 BufferedImage actual = new BufferedImage(xdiff, ydiff, BufferedImage.TYPE_INT_ARGB);
-                Graphics g = actual.getGraphics();
+                g = actual.getGraphics();
                 g.drawImage(image, -minx, -miny, image.getWidth(), image.getHeight(), null);
                 g.setColor(Color.black);
                 g.drawRect(0, 0, xdiff-1, ydiff-1);
