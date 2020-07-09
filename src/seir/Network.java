@@ -990,6 +990,10 @@ public class Network
         {
             iter = 1;
         }
+        else
+        {
+            iter++;
+        }
         
         double obj = calculateSEIR();
         double improvement = 100;
