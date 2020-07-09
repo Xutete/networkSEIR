@@ -28,6 +28,7 @@ import java.awt.event.MouseWheelListener;
 import java.awt.geom.Line2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -181,49 +182,101 @@ public class MapViewer extends JMapViewer
         {
             List<Location> coords = i.getBoundary();
             
-            int[] xpoints = new int[coords.size()];
-            int[] ypoints = new int[coords.size()];
+            List<Point> points = new ArrayList<>();
+            
+            int start = 0;
             
             for(int j = 0; j < coords.size(); j++)
             {
                 Point p = getMapPosition(coords.get(j), false);
                 
-                xpoints[j] = (int)Math.round(p.getX());
-                ypoints[j] = (int)Math.round(p.getY());
+                points.add(p);
+                
+                if(j > start && coords.get(j).equals(coords.get(start)))
+                {
+                    fillPoly(g, i.color, points);
+                    
+                    points.clear();
+                    start = j+1;
+                }
             }
             
-            Polygon poly = new Polygon(xpoints, ypoints, xpoints.length);
-            
-            g.setColor(i.color);
-            g.fillPolygon(poly);
+            if(points.size() > 0)
+            {
+                fillPoly(g, i.color, points);
+            }
         }
         
-        g.setColor(Color.black);
-        
+
         for(Zone i : network.getZones())
         {
             List<Location> coords = i.getBoundary();
             
-            int[] xpoints = new int[coords.size()];
-            int[] ypoints = new int[coords.size()];
+            List<Point> points = new ArrayList<>();
+            
+            int start = 0;
             
             for(int j = 0; j < coords.size(); j++)
             {
                 Point p = getMapPosition(coords.get(j), false);
                 
-                xpoints[j] = (int)Math.round(p.getX());
-                ypoints[j] = (int)Math.round(p.getY());
+                points.add(p);
+                
+                if(j > start && coords.get(j).equals(coords.get(start)))
+                {
+                    drawPoly(g, Color.black, points);
+                    
+                    points.clear();
+                    start = j+1;
+                    
+                }
             }
             
-            Polygon poly = new Polygon(xpoints, ypoints, xpoints.length);
-            
-            g.drawPolygon(poly);
+            if(points.size() > 0)
+            {
+                drawPoly(g, Color.black, points);
+            }
         }
 
 
     }
     
+    public void drawPoly(Graphics g, Color color, List<Point> points)
+    {
+        int[] xpoints = new int[points.size()];
+        int[] ypoints = new int[points.size()];
+        
+        for(int i = 0; i < points.size(); i++)
+        {
+            Point p = points.get(i);
+            xpoints[i] = (int)Math.round(p.getX());
+            ypoints[i] = (int)Math.round(p.getY());
+        }
+        
+        Polygon poly = new Polygon(xpoints, ypoints, xpoints.length);
+           
+        g.setColor(color);
+        g.drawPolygon(poly);
+    }
     
+    public void fillPoly(Graphics g, Color color, List<Point> points)
+    {
+        
+        int[] xpoints = new int[points.size()];
+        int[] ypoints = new int[points.size()];
+        
+        for(int i = 0; i < points.size(); i++)
+        {
+            Point p = points.get(i);
+            xpoints[i] = (int)Math.round(p.getX());
+            ypoints[i] = (int)Math.round(p.getY());
+        }
+        
+        Polygon poly = new Polygon(xpoints, ypoints, xpoints.length);
+           
+        g.setColor(color);
+        g.fillPolygon(poly);
+    }
     
     public void paintText(Graphics g, String name, Point position, int radius) {
 

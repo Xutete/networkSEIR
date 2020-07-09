@@ -103,6 +103,14 @@ public class Location implements Serializable, ICoordinate
         return Math.sqrt((rhs.x - x) * (rhs.x - x) + (rhs.y - y) * (rhs.y - y));
     }
     
+    
+    public boolean equals(Object o)
+    {
+        Location rhs = (Location)o;
+        
+        return rhs.x == x && rhs.y == y;
+    }
+    
     /**
      * Creates a {@link Coordinate} clone of this {@link Location} for use in visualization
      * @return a {@link Coordinate} clone of this {@link Location}
