@@ -69,6 +69,8 @@ public class Network
     private int randomSeed;
     private Random rand;
     
+    private boolean model2 = false;
+    
     public Network(String scenario) throws IOException
     {
         
@@ -188,7 +190,7 @@ public class Network
         
         PrintStream fileout = new PrintStream(new FileOutputStream(file), true);
         
-        fileout.println(inv_sigma+"\t"+inv_ell+"\t"+xi+"\t"+xi_E+"\t"+includeTravel+"\t"+startTime+"\t"+removed_weight+"\t"+iter);
+        fileout.println(inv_sigma+"\t"+inv_ell+"\t"+xi+"\t"+xi_E+"\t"+includeTravel+"\t"+startTime+"\t"+removed_weight+"\t"+iter+"\t"+model2);
         for(Zone i : zones)
         {
             for(int pi = 0; pi < lambda_periods.length; pi++)
@@ -233,6 +235,11 @@ public class Network
         startTime = filein.nextInt();
         removed_weight = filein.nextDouble();
         iter = filein.nextInt();
+        model2 = filein.next().equalsIgnoreCase("true");
+        
+        
+        
+        filein.nextLine();
         
         for(Zone i : zones)
         {
@@ -298,6 +305,10 @@ public class Network
             else if(key.equalsIgnoreCase("maxZones"))
             {
                 numZones = Integer.parseInt(value.trim());
+            }
+            else if(key.equalsIgnoreCase("model2"))
+            {
+                model2 = value.equalsIgnoreCase("true");
             }
         }
         filein.close();
@@ -1096,7 +1107,11 @@ public class Network
 
                 //System.out.print(xi+" "+xi_E+"\t");
                 calculateGradient_xi();
-                //calculateGradient_xiE();
+                
+                if(!model2)
+                {
+                    calculateGradient_xiE();
+                }
 
                 step = calculateStep(iter, obj);
                 updateVariables(step);
@@ -1464,7 +1479,9 @@ public class Network
             int pi = index_r(t);
             for(Zone i : zones)
             {
-                double dN = i.dS[t] + i.dE[t] + i.dI[t] + i.dR[t];
+                //double dN = i.dS[t] + i.dE[t] + i.dI[t] + i.dR[t];
+                double dN = 0;
+                
                 double N = i.getN(t);
                 
                 i.dI[t+1] = i.dI[t] + inv_sigma * i.dE[t]  - inv_ell * i.dI[t];
@@ -1477,7 +1494,29 @@ public class Network
                 
                 i.dR[t+1] = i.dR[t] + inv_ell*i.dI[t];
                 
-                if(includeTravel)
+                
+                if(model2 && includeTravel)
+                {
+                    int ix = i.getIdx();
+                    
+                    for(int jx = 0; jx < matrix.length; jx++)
+                    {
+                        if(jx != ix)
+                        {
+                            Zone j = zones[jx];
+
+                            i.dS[t+1] -= xi*i.r[pi]*i.dS[t] * matrix[jx][ix].getMu(t) * j.I[t] / j.getN();
+                            i.dS[t+1] -= xi*i.r[pi] * i.S[t] * matrix[jx][ix].getMu(t) * j.dI[t] / j.getN();
+                            i.dS[t+1] -= i.r[pi] * i.S[t] * matrix[jx][ix].getMu(t) * j.I[t] / j.getN();
+                            
+                            i.dE[t+1] += xi*i.r[pi]*i.dS[t] * matrix[jx][ix].getMu(t) * j.I[t] / j.getN();
+                            i.dE[t+1] += xi*i.r[pi] * i.S[t] * matrix[jx][ix].getMu(t) * j.dI[t] / j.getN();
+                            i.dE[t+1] += i.r[pi] * i.S[t] * matrix[jx][ix].getMu(t) * j.I[t] / j.getN();
+                        }
+                    }
+                }
+                
+                if(!model2 && includeTravel)
                 {
                     for(int jx = 0; jx < matrix.length; jx++)
                     {
@@ -1538,7 +1577,7 @@ public class Network
                 
                 i.dR[t+1] = i.dR[t] + inv_ell*i.dI[t];
                 
-                if(includeTravel)
+                if(!model2 && includeTravel)
                 {
                     for(int jx = 0; jx < matrix.length; jx++)
                     {
@@ -1637,7 +1676,10 @@ public class Network
                     {
                         System.out.println("N is 0");
                     }
-                    double dN = j.dS[t] + j.dE[t] + j.dI[t] + j.dR[t];
+                    
+                    //double dN = j.dS[t] + j.dE[t] + j.dI[t] + j.dR[t];
+                    double dN = 0;
+                    
                     j.dE[t+1] = j.dE[t] + drdr * j.S[t] * j.I[t]/j.getN(t) + j.r[t_idx]*j.dS[t]*j.I[t]/N
                             + j.r[t_idx] * j.S[t]/N * j.dI[t] - j.r[t_idx]*j.S[t]*j.I[t]/N/N*dN
                             - inv_sigma * j.dE[t];
@@ -1646,8 +1688,29 @@ public class Network
                             + j.r[t_idx]*j.S[t]*j.I[t]/N/N*dN - j.r[t_idx] * j.S[t]/N * j.dI[t];
 
                     j.dR[t+1] = j.dR[t] + inv_ell*j.dI[t];
+                    
+                    
+                    
+                    if(model2 && includeTravel)
+                    {
+                        for(int kx = 0; kx < matrix.length; kx++)
+                        {
+                            if(jx != kx)
+                            {
+                                Zone k = zones[kx];
 
-                    if(includeTravel)
+                                j.dS[t+1] -= xi*j.r[t_idx]*j.dS[t] * matrix[kx][jx].getMu(t) * k.I[t] / k.getN();
+                                j.dS[t+1] -= xi*j.r[t_idx] * j.S[t] * matrix[kx][jx].getMu(t) * k.dI[t] / k.getN();
+                                j.dS[t+1] -= xi*drdr * j.S[t] * matrix[kx][jx].getMu(t) * k.I[t] / k.getN();
+
+                                j.dE[t+1] += xi*j.r[t_idx]*j.dS[t] * matrix[kx][jx].getMu(t) * k.I[t] / k.getN();
+                                j.dE[t+1] += xi*j.r[t_idx] * j.S[t] * matrix[kx][jx].getMu(t) * k.dI[t] / k.getN();
+                                j.dE[t+1] += xi*drdr * j.S[t] * matrix[kx][jx].getMu(t) * k.I[t] / k.getN();
+                            }
+                        }
+                    }
+
+                    if(!model2 && includeTravel)
                     {
                         for(int kx = 0; kx < matrix.length; kx++)
                         {
@@ -1724,8 +1787,26 @@ public class Network
 
                 j.dS[t+1] = j.dS[t] - j.r[t_idx]*j.dS[t]*j.I[t]/j.getN()
                         - j.r[t_idx] * j.S[t]/j.getN() * j.dI[t];
+                
+                
+                if(model2 && includeTravel)
+                {
+                    for(int kx = 0; kx < matrix.length; kx++)
+                    {
+                        if(jx != kx)
+                        {
+                            Zone k = zones[kx];
+                            
+                            j.dS[t+1] -= xi*j.r[t_idx]*j.dS[t] * matrix[kx][jx].getMu(t) * k.I[t] / k.getN();
+                            j.dS[t+1] -= xi*j.r[t_idx] * j.S[t] * matrix[kx][jx].getMu(t) * k.dI[t] / k.getN();
+                            
+                            j.dE[t+1] += xi*j.r[t_idx]*j.dS[t] * matrix[kx][jx].getMu(t) * k.I[t] / k.getN();
+                            j.dE[t+1] += xi*j.r[t_idx] * j.S[t] * matrix[kx][jx].getMu(t) * k.dI[t] / k.getN();
+                        }
+                    }
+                }
 
-                if(includeTravel)
+                if(!model2 && includeTravel)
                 {
                     for(int kx = 0; kx < matrix.length; kx++)
                     {
@@ -1912,6 +1993,28 @@ public class Network
                 
                 i.R[t+1] = i.R[t] + (inv_ell - step*gradient_inv_ell)*i.I[t];
                 
+                if(model2 && includeTravel)
+                {
+                    fSE = 0;
+                    
+                    for(int jx = 0; jx < zones.length; jx++)
+                    {
+                        if(jx != ix)
+                        {
+                            Zone j = zones[jx];
+                        
+                            fSE += Math.max(0, Math.min(1, xi - step*gradient_xi)) *Math.min(20, Math.max(0, i.r[pi_r] - step*i.gradient_r[pi_r])) 
+                                    * i.S[t] * j.I[t]/j.getN() * matrix[jx][ix].getMu(t);
+                        }  
+                    }
+                    
+                    
+                    fSE = Math.min(i.S[t], fSE);
+                    
+                    i.S[t+1] -= fSE;
+                    i.E[t+1] += fSE;
+                }
+                
                 
                 /*
                 if(i.getId() == 27017)
@@ -1934,7 +2037,7 @@ public class Network
                 */
                 
                 
-                if(includeTravel)
+                if(!model2 && includeTravel)
                 {
                     for(int jx = 0; jx < zones.length; jx++)
                     {

@@ -1,3 +1,4 @@
 travel	true
 startTime	60
-maxIter	50
+numIter	1000
+maxZones 10000

@@ -1,0 +1,7 @@
+MN_travel run 0
+T = 153
+lambda_periods = 23
+r_periods = 7
+include travel: true
+randomize false
+Iteration	Objective	Obj. change	I Error	CPU time (s)	 R error

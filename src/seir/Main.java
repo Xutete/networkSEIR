@@ -44,13 +44,15 @@ public class Main {
                 {
                     try
                     {
-                        Network network = new Network("MN_travel");
+                        Network network = new Network("MN_model2");
                         
+                        /*
                         network.load(0);
                         
                         double obj = network.calculateSEIR();
                         
                         System.out.println(obj);
+                        */
                         
                         network.gradientDescent();
                         //network.randomStart(10, start_run);
@@ -59,12 +61,18 @@ public class Main {
                         //network.printTotalError();
                         
                         /*
-                        network.load(0);
-                        PlotErrors test = new PlotErrors(network);
-                        
-                        Zone z = network.findZone(27005);
+                        network.load("no_xiE");
                         
                         double obj = network.calculateSEIR();
+                        
+                        System.out.println(obj);
+                        */
+                        
+                        //PlotErrors test = new PlotErrors(network);
+                        
+                        /*
+                        Zone z = network.findZone(27017);
+                        
                         
                         network.calculateGradient_r(z);
 
@@ -76,6 +84,17 @@ public class Main {
                             System.out.println(pi+" "+network.r_periods[pi]+"\t"+z.r[pi]+"\t"+z.gradient_r[pi]+"\t"+(z.r[pi]-step*z.gradient_r[pi]));
                         }
                         
+                        System.out.println(step);
+                        
+                        network.resetGradients();
+                        
+                        network.calculateGradient_E0(z);
+                        
+                        z.gradient_E0 = -10;
+                        
+                        step = network.calculateStep(1, obj);
+                        
+                        System.out.println(z.E0+"\t"+z.gradient_E0+"\t"+(z.E0-step*z.gradient_E0));
                         System.out.println(step);
                         */
                     }

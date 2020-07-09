@@ -58,6 +58,7 @@ public class PlotErrors extends JFrame
         
         plot.addLegend(0, "Predicted");
         plot.addLegend(1, "Reported*lambda");
+        plot.addLegend(2, "Reported");
         
         zone_idx = 0;
         showZone(network.getZones()[zone_idx]);
@@ -154,6 +155,7 @@ public class PlotErrors extends JFrame
         label.setText("County "+i.getId());
         plot.clear(0);
         plot.clear(1);
+        plot.clear(2);
         
         
         
@@ -161,6 +163,7 @@ public class PlotErrors extends JFrame
         {
             plot.addPoint(0, t, i.I[t], true);
             plot.addPoint(1, t, i.reportedI[t] * i.lambda[network.index_lambda(t)], true);
+            plot.addPoint(2, t, i.reportedI[t], true);
         }
         
         plot.fillPlot();
