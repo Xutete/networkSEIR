@@ -39,7 +39,7 @@ public class Zone
         this.id = id;
         this.N = N;
         
-        color = Color.white;
+        color = new Color(255, 255, 255, 128);
         
     }
     

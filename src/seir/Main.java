@@ -46,10 +46,11 @@ public class Main {
                     try
                     {
                         Network network = new Network("MN_model2");
-
+                        network.load(0);
+                        network.colorZonesE0(100);
                         
                         /*
-                        network.load(0);
+                        
                         
                         double obj = network.calculateSEIR();
                         

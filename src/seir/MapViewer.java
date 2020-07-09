@@ -172,8 +172,17 @@ public class MapViewer extends JMapViewer
     {
         Graphics2D g = (Graphics2D)window;
         
-        g.setColor(Color.lightGray);
-        g.fillRect(0, 0, getWidth(), getHeight());
+        super.paintComponent(g);
+        
+        BufferedImage image = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
+        
+        
+        Graphics g2 = image.getGraphics();
+        
+        g2.setColor(new Color(130, 130, 130));
+        g2.fillRect(0, 0, getWidth(), getHeight());
+        
+        
         
         
         
@@ -194,7 +203,7 @@ public class MapViewer extends JMapViewer
                 
                 if(j > start && coords.get(j).equals(coords.get(start)))
                 {
-                    fillPoly(g, i.color, points);
+                    fillPoly(g2, i.color, points);
                     
                     points.clear();
                     start = j+1;
@@ -203,7 +212,7 @@ public class MapViewer extends JMapViewer
             
             if(points.size() > 0)
             {
-                fillPoly(g, i.color, points);
+                fillPoly(g2, i.color, points);
             }
         }
         
@@ -224,7 +233,7 @@ public class MapViewer extends JMapViewer
                 
                 if(j > start && coords.get(j).equals(coords.get(start)))
                 {
-                    drawPoly(g, Color.black, points);
+                    drawPoly(g2, Color.black, points);
                     
                     points.clear();
                     start = j+1;
@@ -234,11 +243,14 @@ public class MapViewer extends JMapViewer
             
             if(points.size() > 0)
             {
-                drawPoly(g, Color.black, points);
+                drawPoly(g2, Color.black, points);
             }
         }
 
-
+        Graphics2D g2d = (Graphics2D) g.create();
+        g2d.setComposite(AlphaComposite.SrcOver.derive(0.5f));
+        
+        g2d.drawImage(image, 0, 0, image.getWidth(), image.getHeight(), null);
     }
     
     public void drawPoly(Graphics g, Color color, List<Point> points)
@@ -345,21 +357,59 @@ public class MapViewer extends JMapViewer
         {
             public void run()
             {
-                int width = getWidth()*8;
-                int height = getHeight()*8;
+                int width = getWidth()*2;
+                int height = getHeight()*2;
                 MapViewer map2 = new MapViewer(network, width, height);
                 map2.setSize(new Dimension(width, height));
 
 
                 map2.setZoom(getZoom());
                 map2.setCenter(getCenter());
-                map2.setZoom(getZoom()+2);
+                map2.setZoom(getZoom()+3);
                 map2.setScale(2);
-                BufferedImage image = new BufferedImage(map2.getWidth(), map2.getHeight(), BufferedImage.TYPE_INT_ARGB);
-                map2.setZoomControlsVisible(false);
-                Graphics g = image.getGraphics();
+                
+                int zoom = map2.getZoom();
+                
+                JFrame frame = new JFrame();
+                frame.add(map2);
+                frame.setSize(map2.getWidth()+100, map2.getHeight()+100);
+                frame.setVisible(true);
+                
+                
+                
+                map2.setSize(width, height);
+                
+                int y = 0;
+                
+                BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+                
+                Graphics g2 = image.getGraphics();
+                
+                for(y = 0; y < height; y += 1000)
+                {
+                    BufferedImage temp = new BufferedImage(map2.getWidth(), map2.getHeight(), BufferedImage.TYPE_INT_ARGB);
 
-                map2.print(g);
+                    map2.setZoomControlsVisible(false);
+
+
+                    //map2.setDisplayPosition(new Point(getWidth()/2, getHeight()/2), getCenter(), zoom);
+                    
+                    try
+                    {
+                        Thread.sleep(10*1000);
+                    }
+                    catch(Exception ex){
+                        ex.printStackTrace(System.err);
+                    }
+
+                    Graphics g = temp.getGraphics();
+
+                    map2.print(g);
+                
+                    g2.drawImage(image, 0, y, image.getWidth(), image.getHeight(), null);
+                }
+                
+
                 //g.setColor(Color.black);
                 //g.drawRect(0, 0, image.getWidth()-1, image.getHeight()-1);
 
@@ -395,7 +445,7 @@ public class MapViewer extends JMapViewer
 
 
                 BufferedImage actual = new BufferedImage(xdiff, ydiff, BufferedImage.TYPE_INT_ARGB);
-                g = actual.getGraphics();
+                Graphics g = actual.getGraphics();
                 g.drawImage(image, -minx, -miny, image.getWidth(), image.getHeight(), null);
                 g.setColor(Color.black);
                 g.drawRect(0, 0, xdiff-1, ydiff-1);

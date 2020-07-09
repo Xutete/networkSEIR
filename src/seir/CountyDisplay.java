@@ -29,7 +29,9 @@ public class CountyDisplay extends JFrame
     {
         map = new MapViewer(network, 900, 900);
         
-        JButton screenshot = new JButton("Screenshot");
+        JButton screenshot2 = new JButton("Screenshot");
+        
+        JButton screenshot = new JButton("Hi-res screenshot");
         
         screenshot.addActionListener(new ActionListener()
         {
@@ -50,10 +52,30 @@ public class CountyDisplay extends JFrame
             }
         });
         
+        screenshot2.addActionListener(new ActionListener()
+        {
+            public void actionPerformed(ActionEvent e)
+            {
+                try
+                {
+                    File file = new File(network.getDirectory()+"/images");
+                    file.mkdirs();
+
+                    map.saveScreenshot(new File(network.getDirectory()+"/images/screenshot_"+image_count+".png"));
+                    image_count++;
+                }
+                catch(Exception ex)
+                {
+                    ex.printStackTrace(System.err);
+                }
+            }
+        });
+        
         JPanel p = new JPanel();
         p.setLayout(new GridBagLayout());
         
-        constrain(p, map, 0, 0, 1, 1);
+        constrain(p, map, 0, 0, 1, 2);
+        constrain(p, screenshot2, 1, 1, 1, 1);
         constrain(p, screenshot, 1, 0, 1, 1);
         
         add(p);

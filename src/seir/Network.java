@@ -7,6 +7,7 @@ package seir;
 
 
 
+import java.awt.Color;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -35,8 +36,8 @@ public class Network
     public static final boolean optimizeParameters = false;
     public static final double INFTY = Double.MAX_VALUE;
     
-    private double inv_sigma = 0.15; // incubation time
-    private double inv_ell = 0.08* 0.985 + 0.12* 0.015; // recovery time
+    private double inv_sigma = 1.0/6.4; //0.15; // incubation time
+    private double inv_ell = 1.0/7; //0.08* 0.985 + 0.12* 0.015; // recovery time
     
     private double gradient_inv_sigma, gradient_inv_ell;
     
@@ -768,6 +769,15 @@ public class Network
                     break;
                 }
             }
+        }
+    }
+    
+    public void colorZonesE0(int max_E0)
+    {
+        for(Zone i : zones)
+        {
+            int red = (int)Math.round(255*Math.min(1, i.E0 / max_E0));
+            i.color = new Color(255, 255-red, 255-red);
         }
     }
     

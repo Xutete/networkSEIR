@@ -27,7 +27,7 @@ public class JMapViewer extends org.openstreetmap.gui.jmapviewer.JMapViewer
     public JMapViewer()
     {
         //setTileSource(new OfflineOsmTileSource("osm/tiles/",1,9));
-        displayOSM = false;
+        displayOSM = true;
     }
     
     public void setDisplayOSM(boolean d)
