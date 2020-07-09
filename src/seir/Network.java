@@ -990,11 +990,11 @@ public class Network
         }
         
         
-        System.out.println("Iteration\tObjective\tObj. change\tError\tCPU time");
+        System.out.println("Iteration\tObjective\tObj. change\tError\tR error\tCPU time");
         
         if(!loaded)
         {
-            fileout.println("Iteration\tObjective\tObj. change\tI Error\tCPU time (s)\t R error");
+            fileout.println("Iteration\tObjective\tObj. change\tI Error\t R error\tCPU time (s)");
         }
         
         if(!loaded)
@@ -1132,9 +1132,9 @@ public class Network
             double error2 = calculateRemovedError();
             
             System.out.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
-                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9)+"s"+"\t"+String.format("%.2f", error2)+"%");
+                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.2f", error2)+"%\t"+String.format("%.1f", time/1.0e9)+"s");
             fileout.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
-                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9)+"s"+"\t"+String.format("%.2f", error2)+"%");
+                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.2f", error2)+"%\t"+String.format("%.1f", time/1.0e9)+"s");
             prev_obj = obj;
             
             
@@ -1173,6 +1173,49 @@ public class Network
         }
         
         return 100.0*error/total;
+    }
+    
+    
+    public void printAverageRates() throws IOException 
+    {
+        PrintStream fileout = new PrintStream(new FileOutputStream(new File("data/"+scenario+"/output/avg_r_lambda.txt")), true);
+        
+        fileout.println("time\tavg r\tavg lambda");
+        for(int t = startTime; t < T; t++)
+        {
+            
+            double total = 0;
+            double count = 0;
+            
+            int pi = index_r(t);
+            
+            for(Zone i : zones)
+            {
+                total += i.r[pi] * i.getN();
+                count += i.getN();
+            }
+            
+            double avg_r = total/count;
+            
+            
+            total = 0;
+            count = 0;
+            
+            pi = index_lambda(t);
+            
+            for(Zone i : zones)
+            {
+                total += i.lambda[pi] * i.getN();
+                count += i.getN();
+            }
+            
+            double avg_lambda = total/count;
+            
+            fileout.println(t+"\t"+avg_r+"\t"+avg_lambda);
+            
+        }
+        
+        fileout.close();
     }
     
     

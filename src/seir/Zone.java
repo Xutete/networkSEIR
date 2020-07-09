@@ -5,6 +5,8 @@
  */
 package seir;
 
+import java.util.List;
+
 /**
  *
  * @author micha
@@ -25,6 +27,8 @@ public class Zone
     protected double[] lambda, r, gradient_lambda, gradient_r;
     protected double gradient_E0, E0;
     
+    private List<Location> boundary;
+    
     
     public Zone(int id, double N)
     {
@@ -35,6 +39,10 @@ public class Zone
         
     }
     
+    public List<Location> getBoundary()
+    {
+        return boundary;
+    }
     
 
     
