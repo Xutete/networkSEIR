@@ -1096,7 +1096,7 @@ public class Network
                 //System.out.println("xi step: "+(step * gradient_xi)+" "+(step*gradient_xiE)+"\t"+xi+" "+xi_E);
             }
             
-            //save();
+            save();
             
             time = System.nanoTime() - time;
             // System.out.println("Step: "+step);
