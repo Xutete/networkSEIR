@@ -50,7 +50,7 @@ public class Network
     private Zone[] zones;
     private Link[][] matrix;
     
-    private TimePeriod[] lambda_periods, r_periods;
+    protected TimePeriod[] lambda_periods, r_periods;
     
     
     private String scenario;
@@ -188,7 +188,7 @@ public class Network
         
         PrintStream fileout = new PrintStream(new FileOutputStream(file), true);
         
-        fileout.println(inv_sigma+"\t"+inv_ell+"\t"+xi+"\t"+xi_E+"\t"+includeTravel+"\t"+startTime+"\t"+removed_weight);
+        fileout.println(inv_sigma+"\t"+inv_ell+"\t"+xi+"\t"+xi_E+"\t"+includeTravel+"\t"+startTime+"\t"+removed_weight+"\t"+iter);
         for(Zone i : zones)
         {
             for(int pi = 0; pi < lambda_periods.length; pi++)
@@ -205,6 +205,8 @@ public class Network
         fileout.close();
     }
     
+    private boolean loaded = false;
+    
     public void load(int run) throws IOException
     {
         load(""+run);
@@ -219,6 +221,8 @@ public class Network
     {
         initialize();
         
+        loaded = true;
+        
         Scanner filein = new Scanner(file);
         
         inv_sigma = filein.nextDouble();
@@ -228,6 +232,7 @@ public class Network
         includeTravel = filein.next().equalsIgnoreCase("true");
         startTime = filein.nextInt();
         removed_weight = filein.nextDouble();
+        iter = filein.nextInt();
         
         for(Zone i : zones)
         {
@@ -246,6 +251,18 @@ public class Network
         calculateSEIR();
     }
     
+    public Zone findZone(int id)
+    {
+        for(Zone i : zones)
+        {
+            if(i.getId() == id)
+            {
+                return i;
+            }
+        }
+        
+        return null;
+    }
     public String getDirectory()
     {
         return "data/"+scenario;
@@ -798,7 +815,7 @@ public class Network
     }
     
     int num_iter = 100;
-    double alpha = 0.4;
+    double alpha = 0.001;
     double beta = 0.5;
     int max_step_iter = 50;
     double min_improvement = 0.01;
@@ -911,6 +928,8 @@ public class Network
         
     }
     
+    private int iter;
+    
     public double gradientDescent() throws IOException 
     {
         
@@ -930,7 +949,7 @@ public class Network
         
         
         
-        PrintStream fileout =  new PrintStream(new FileOutputStream(new File("data/"+scenario+"/output/log_"+run+".txt")), true);
+        PrintStream fileout =  new PrintStream(new FileOutputStream(new File("data/"+scenario+"/output/log_"+run+".txt"), loaded), true);
         
         
         System.out.println(scenario + " run "+run);
@@ -952,18 +971,27 @@ public class Network
         
         
         System.out.println("Iteration\tObjective\tObj. change\tError\tCPU time");
-        fileout.println("Iteration\tObjective\tObj. change\tI Error\tCPU time (s)\t R error");
+        
+        if(!loaded)
+        {
+            fileout.println("Iteration\tObjective\tObj. change\tI Error\tCPU time (s)\t R error");
+        }
         
         double obj = calculateSEIR();
         double improvement = 100;
         
-        System.out.println("0\t"+obj);
+        System.out.println(iter+"\t"+obj);
         
         double prev_obj = obj;
         
         double updated_obj = obj;
         
-        for(int iter = 1; iter <= num_iter && improvement > min_improvement; iter++)
+        if(!loaded)
+        {
+            iter = 1;
+        }
+        
+        for(;iter <= num_iter && improvement > min_improvement; iter++)
         {   
             long time = System.nanoTime();
 
@@ -999,13 +1027,15 @@ public class Network
                 calculateGradient_r(i);
                 
                 step = calculateStep(iter, obj);
+                
+                double test = calculateSEIRsearch(step, 0);
                 updateVariables(step);
                 updated_obj = obj;
                 obj = calculateSEIR();
                 
                 if((updated_obj-obj)/updated_obj*100.0 < -0.009)
                 {
-                    System.out.println("\t"+i+"-r\t"+obj+"\t"+updated_obj+"\t"+step+"\t"+String.format("%.2f", (updated_obj-obj)/updated_obj*100.0)+"\t"+calculateSEIRsearch(0, 0));
+                    System.out.println("\t"+i+"-r\t"+obj+"\t"+updated_obj+"\t"+step+"\t"+String.format("%.2f", (updated_obj-obj)/updated_obj*100.0)+"\t"+test);
                 }
             }
             
@@ -1145,22 +1175,32 @@ public class Network
         int inner_iter = 0;
         
         double output;
+        double compare;
 
-        while( (output = calculateSEIRsearch(step, iter)) > obj + alpha * step * change)
+        
+        while( (output = calculateSEIRsearch(step, iter)) > (compare = obj + alpha * step * change))
         {
-            step = step*beta;
-            
             inner_iter ++;
+            
+            //System.out.println(inner_iter);
             
             if(inner_iter > max_step_iter)
             {
                 step = 0;
                 break;
             }
-            //System.out.println("\t\t"+output+" > "+(obj + alpha * step * change)+"\t"+step+" "+inner_iter);
+            
+            //System.out.println("\t\t"+output+" > "+(obj + alpha * step * change)+"\t"+step+" "+inner_iter+"\t"+(output>(obj + alpha * step * change))+"\t"+compare);
+            
+            step = step*beta;
         }
         
         output = calculateSEIRsearch(step, iter);
+        
+        if(output > obj)
+        {
+            System.out.println("output > obj??");
+        }
 
         /*
         if(iter == 24)
@@ -1222,7 +1262,7 @@ public class Network
                 i.r[pi] = Math.min(20, Math.max(0, i.r[pi] - step * i.gradient_r[pi]));
             }
             
-            i.E0 = Math.min(i.getN()/100, Math.max(0, i.E0 - step * i.gradient_E0));
+            i.E0 = Math.min(i.getN()/100.0, Math.max(0, i.E0 - step * i.gradient_E0));
             
             i.I[startTime] = i.lambda[index_lambda(startTime)] * i.reportedI[startTime];
             i.E[startTime] = i.E0;
@@ -1527,8 +1567,10 @@ public class Network
 
             for(int t = Math.max(startTime, lambda_periods[pi].getStart()); t < lambda_periods[pi].getEnd() && t < T; t++)
             {
-                sum -= 2* (i.I[t] - i.lambda[pi] * i.reportedI[t]) * i.reportedI[t];
-                sum -= removed_weight * (2* (i.R[t] - i.lambda[pi] * i.reportedR[t]) * i.reportedR[t]);
+                double value = -1 * 2* (i.I[t] - i.lambda[pi] * i.reportedI[t]) * i.reportedI[t];
+                value += -1 * removed_weight * (2* (i.R[t] - i.lambda[pi] * i.reportedR[t]) * i.reportedR[t]);
+                sum += value;
+
             }
 
             i.gradient_lambda[pi] = sum;
@@ -1806,11 +1848,13 @@ public class Network
     
     public double calculateSEIRsearch(double step, int iter)
     {
+        //System.out.println("step: "+step);
+        
         
         for(Zone i : zones)
         {
             i.I[startTime] = Math.min(10, Math.max(1, i.lambda[index_lambda(startTime)] - step*i.gradient_lambda[index_lambda(startTime)])) * i.reportedI[startTime];
-            i.E[startTime] = Math.min(i.getN()/100, Math.max(0, i.E0 - step * i.gradient_E0));
+            i.E[startTime] = Math.min(i.getN()/100.0, Math.max(0, i.E0 - step * i.gradient_E0));
             
 
             i.R[startTime] = 0;
@@ -1853,6 +1897,14 @@ public class Network
                 
                 i.R[t+1] = i.R[t] + (inv_ell - step*gradient_inv_ell)*i.I[t];
                 
+                
+                /*
+                if(i.getId() == 27017)
+                {
+                    System.out.println(t+"\t"+i.E[t]+"\t"+i.I[t]+"\t"+(i.reportedI[t] * i.lambda[index_lambda(t)]));
+                }
+                */
+                
                 if(printdebug)
                 {
                     System.out.println(t+"\t"+fSE+"\t"+i.E[t+1]+"\t"+i.I[t+1]+"\t"+i.R[t+1]);
@@ -1865,6 +1917,7 @@ public class Network
                             " "+Math.max(0, i.r[pi_r] - step*i.gradient_r[pi_r]));
                 }
                 */
+                
                 
                 if(includeTravel)
                 {
@@ -1896,8 +1949,10 @@ public class Network
             
             for(Zone i : zones)
             {
-                double temp = i.I[t] - Math.min(10, Math.max(1, i.lambda[pi_lambda] - step*i.gradient_lambda[pi_lambda])) * i.reportedI[t];
+                double newlambda = Math.min(10, Math.max(1, i.lambda[pi_lambda] - step*i.gradient_lambda[pi_lambda]));
+                double temp = i.I[t] - newlambda * i.reportedI[t];
                 output += temp*temp;
+                
                 
                 temp = i.R[t] - Math.min(10, Math.max(1, i.lambda[pi_lambda] - step*i.gradient_lambda[pi_lambda])) * i.reportedR[t];
                 output += removed_weight * temp*temp;

@@ -45,13 +45,34 @@ public class Main {
                     try
                     {
                         Network network = new Network("MN_travel");
+                        
                         network.load(0);
-                        //network.gradientDescent();
+                        network.gradientDescent();
                         //network.randomStart(10, start_run);
                         
-                        PlotErrors test = new PlotErrors(network);
                         
                         //network.printTotalError();
+                        
+                        /*
+                        network.load(0);
+                        PlotErrors test = new PlotErrors(network);
+                        
+                        Zone z = network.findZone(27005);
+                        
+                        double obj = network.calculateSEIR();
+                        
+                        network.calculateGradient_r(z);
+
+                        
+                        double step = network.calculateStep(1, obj);
+                        
+                        for(int pi = 0; pi < network.r_periods.length; pi++)
+                        {
+                            System.out.println(pi+" "+network.r_periods[pi]+"\t"+z.r[pi]+"\t"+z.gradient_r[pi]+"\t"+(z.r[pi]-step*z.gradient_r[pi]));
+                        }
+                        
+                        System.out.println(step);
+                        */
                     }
                     catch(IOException ex)
                     {
