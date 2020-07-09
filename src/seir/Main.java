@@ -7,6 +7,7 @@ package seir;
 
 import java.io.File;
 import java.io.IOException;
+import javax.swing.JFrame;
 
 /**
  *
@@ -45,6 +46,7 @@ public class Main {
                     try
                     {
                         Network network = new Network("MN_model2");
+
                         
                         /*
                         network.load(0);
@@ -54,7 +56,7 @@ public class Main {
                         System.out.println(obj);
                         */
                         
-                        network.gradientDescent();
+                        //network.gradientDescent();
                         //network.randomStart(10, start_run);
                         
                         
@@ -69,6 +71,8 @@ public class Main {
                         */
                         
                         //PlotErrors test = new PlotErrors(network);
+                        
+                        CountyDisplay test2 = new CountyDisplay(network);
                         
                         /*
                         Zone z = network.findZone(27017);

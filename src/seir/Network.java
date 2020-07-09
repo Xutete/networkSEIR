@@ -730,6 +730,45 @@ public class Network
             
         }
         filein.close();
+        
+        
+        File boundsdir = new File("data/"+scenario+"/boundaries/");
+        
+        for(File f : boundsdir.listFiles())
+        {
+            filein = new Scanner(f);
+            
+            int county = 0;
+            
+            List<Location> coords = new ArrayList<>();
+            
+            filein.nextLine();
+            
+            while(filein.hasNext())
+            {
+                chopper = new Scanner(filein.nextLine());
+                chopper.useDelimiter(",");
+                
+                chopper.next();
+                county = chopper.nextInt();
+                chopper.next();
+                chopper.next();
+                chopper.next();
+                
+                coords.add(new Location(chopper.nextDouble(), chopper.nextDouble()));
+            }
+            
+            filein.close();
+            
+            for(Zone i : zones)
+            {
+                if(i.getId() % 1000 == county % 1000)
+                {
+                    i.setBoundary(coords);
+                    break;
+                }
+            }
+        }
     }
     
     public int daysBetween(Date d1, Date d2){

@@ -15,6 +15,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Point;
+import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.Stroke;
 import java.awt.event.ActionEvent;
@@ -29,6 +30,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import javax.imageio.ImageIO;
 import javax.swing.JComponent;
@@ -68,6 +70,7 @@ public class MapViewer extends JMapViewer
     
     public MapViewer(Network network, int viewWidth, int viewHeight)
     {
+        this.network = network;
         setPreferredSize(new Dimension(viewWidth, viewHeight));
 
         
@@ -76,6 +79,7 @@ public class MapViewer extends JMapViewer
         
         setFont(new Font("Arial", Font.BOLD, 14));
         
+        recenter();
 
     }
     
@@ -118,6 +122,7 @@ public class MapViewer extends JMapViewer
         
         for(Zone n : network.getZones())
         {
+
             Location c = n.getBoundary().get(0);
             
             if(c.getX() < minX)
@@ -168,6 +173,53 @@ public class MapViewer extends JMapViewer
         
         g.setColor(Color.lightGray);
         g.fillRect(0, 0, getWidth(), getHeight());
+        
+        
+        
+        
+        for(Zone i : network.getZones())
+        {
+            List<Location> coords = i.getBoundary();
+            
+            int[] xpoints = new int[coords.size()];
+            int[] ypoints = new int[coords.size()];
+            
+            for(int j = 0; j < coords.size(); j++)
+            {
+                Point p = getMapPosition(coords.get(j), false);
+                
+                xpoints[j] = (int)Math.round(p.getX());
+                ypoints[j] = (int)Math.round(p.getY());
+            }
+            
+            Polygon poly = new Polygon(xpoints, ypoints, xpoints.length);
+            
+            g.setColor(i.color);
+            g.fillPolygon(poly);
+        }
+        
+        g.setColor(Color.black);
+        
+        for(Zone i : network.getZones())
+        {
+            List<Location> coords = i.getBoundary();
+            
+            int[] xpoints = new int[coords.size()];
+            int[] ypoints = new int[coords.size()];
+            
+            for(int j = 0; j < coords.size(); j++)
+            {
+                Point p = getMapPosition(coords.get(j), false);
+                
+                xpoints[j] = (int)Math.round(p.getX());
+                ypoints[j] = (int)Math.round(p.getY());
+            }
+            
+            Polygon poly = new Polygon(xpoints, ypoints, xpoints.length);
+            
+            g.drawPolygon(poly);
+        }
+
 
     }
     
@@ -248,7 +300,7 @@ public class MapViewer extends JMapViewer
 
                 map2.setZoom(getZoom());
                 map2.setCenter(getCenter());
-                map2.setZoom(getZoom()+3);
+                map2.setZoom(getZoom()+2);
                 map2.setScale(2);
                 BufferedImage image = new BufferedImage(map2.getWidth(), map2.getHeight(), BufferedImage.TYPE_INT_ARGB);
                 map2.setZoomControlsVisible(false);
@@ -267,12 +319,12 @@ public class MapViewer extends JMapViewer
                 {
                     for(Location l : n.getBoundary())
                     {
-                        Point p = getMapPosition(l, false);
+                        Point p = map2.getMapPosition(l, false);
 
-                        minx = (int)Math.min(minx, p.x-10);
-                        miny = (int)Math.min(miny, p.y-10);
-                        maxx = (int)Math.max(maxx, p.x+10);
-                        maxy = (int)Math.max(maxy, p.y+10);
+                        minx = (int)Math.min(minx, p.x-30);
+                        miny = (int)Math.min(miny, p.y-30);
+                        maxx = (int)Math.max(maxx, p.x+30);
+                        maxy = (int)Math.max(maxy, p.y+30);
                     }
 
                 }
@@ -282,6 +334,7 @@ public class MapViewer extends JMapViewer
                 maxy = (int)Math.min(maxy, image.getHeight());
                 minx = (int)Math.max(minx, 0);
                 miny = (int)Math.max(miny, 0);
+        
 
 
                 int xdiff = maxx - minx;

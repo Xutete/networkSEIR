@@ -5,6 +5,7 @@
  */
 package seir;
 
+import java.awt.Color;
 import java.util.List;
 
 /**
@@ -29,6 +30,7 @@ public class Zone
     
     private List<Location> boundary;
     
+    protected Color color;
     
     public Zone(int id, double N)
     {
@@ -37,11 +39,19 @@ public class Zone
         this.id = id;
         this.N = N;
         
+        color = Color.white;
+        
     }
     
     public List<Location> getBoundary()
     {
         return boundary;
+    }
+    
+    
+    public void setBoundary(List<Location> bounds)
+    {
+        boundary = bounds;
     }
     
 
