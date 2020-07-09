@@ -47,6 +47,11 @@ public class Main {
                         Network network = new Network("MN_travel");
                         
                         network.load(0);
+                        
+                        double obj = network.calculateSEIR();
+                        
+                        System.out.println(obj);
+                        
                         network.gradientDescent();
                         //network.randomStart(10, start_run);
                         

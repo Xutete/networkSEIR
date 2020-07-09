@@ -940,10 +940,12 @@ public class Network
         rand = new Random(randomSeed);
         
         
-        initialize();
+        if(!loaded)
+        {
+            initialize();
         
-        
-        initialSolution();
+            initialSolution();
+        }
         
         
         
@@ -964,6 +966,8 @@ public class Network
         fileout.println("include travel: "+includeTravel);
         System.out.println("randomize "+randomize);
         fileout.println("randomize "+randomize);
+        
+        
         if(randomize)
         {
             System.out.println("random seed: "+randomSeed);
@@ -977,19 +981,21 @@ public class Network
             fileout.println("Iteration\tObjective\tObj. change\tI Error\tCPU time (s)\t R error");
         }
         
+        if(!loaded)
+        {
+            iter = 1;
+        }
+        
         double obj = calculateSEIR();
         double improvement = 100;
         
-        System.out.println(iter+"\t"+obj);
+        System.out.println((iter-1)+"\t"+obj);
         
         double prev_obj = obj;
         
         double updated_obj = obj;
         
-        if(!loaded)
-        {
-            iter = 1;
-        }
+        
         
         for(;iter <= num_iter && improvement > min_improvement; iter++)
         {   
@@ -1090,7 +1096,7 @@ public class Network
                 //System.out.println("xi step: "+(step * gradient_xi)+" "+(step*gradient_xiE)+"\t"+xi+" "+xi_E);
             }
             
-            save();
+            //save();
             
             time = System.nanoTime() - time;
             // System.out.println("Step: "+step);
