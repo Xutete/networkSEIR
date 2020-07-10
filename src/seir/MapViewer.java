@@ -177,9 +177,11 @@ public class MapViewer extends JMapViewer
         BufferedImage image = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
         
         
-        Graphics g2 = image.getGraphics();
+        Graphics2D g2 = (Graphics2D) image.getGraphics();
         
-        g2.setColor(new Color(130, 130, 130));
+        g2.setStroke(new BasicStroke(3));
+        
+        g2.setColor(new Color(100, 100, 100));
         g2.fillRect(0, 0, getWidth(), getHeight());
         
         
@@ -251,6 +253,55 @@ public class MapViewer extends JMapViewer
         g2d.setComposite(AlphaComposite.SrcOver.derive(0.5f));
         
         g2d.drawImage(image, 0, 0, image.getWidth(), image.getHeight(), null);
+        
+
+        Point legendp = this.getMapPosition(46.598787, -91.384587);
+        
+        
+        int legendx = (int)(getWidth()*0.75);
+        int legendy = getHeight()/2;
+        
+        if(legendp != null)
+        {
+            legendx = (int)legendp.getX();
+            legendy = (int)legendp.getY();
+        }
+        
+        g.setColor(Color.white);
+        
+        g.fillRect(legendx, legendy, (int)(getWidth()/7.0), getHeight()/3);
+        
+        g.setColor(Color.black);
+        
+        g.drawRect(legendx, legendy, (int)(getWidth()/7.0), getHeight()/3);
+        
+        
+        
+        int fontsize = getHeight()/18;
+        
+        g.setFont(new Font("TimesRoman", Font.PLAIN, (int)(fontsize/2)));
+        
+        int height = getHeight()/3 - (int)(fontsize*1.5);
+        
+        for(int y = 0; y < height; y++)
+        {
+            int mixR = network.mincolor.getRed()  + (int)Math.round(((double)(height - y)/height) * (network.maxcolor.getRed() - network.mincolor.getRed()));
+            int mixG = network.mincolor.getGreen()  + (int)Math.round(((double)(height - y)/height) * (network.maxcolor.getGreen() - network.mincolor.getGreen()));
+            int mixB = network.mincolor.getBlue()  + (int)Math.round(((double)(height - y)/height) * (network.maxcolor.getBlue() - network.mincolor.getBlue()));
+            
+            g.setColor(new Color(mixR, mixG, mixB, 160));
+            
+            g.drawLine((int)(legendx+fontsize/4), legendy + (int)(fontsize)+y, (int)(legendx+fontsize/4+fontsize/2), legendy + (int)(fontsize)+y);
+        }
+        
+        g.setColor(Color.black);
+        
+        g.drawRect((int)(legendx+fontsize/4), legendy + (int)(fontsize), fontsize/2, height);
+
+        g.drawString("Legend", (int)(legendx)+fontsize/4, legendy+fontsize/6+fontsize/2);
+        
+        g.drawString(network.maxlabel, (int)(legendx+fontsize/4+fontsize/2+10), legendy + (int)(fontsize)+fontsize/3);
+        g.drawString(network.minlabel, (int)(legendx+fontsize/4+fontsize/2+10), legendy + height+ (int)(fontsize));
     }
     
     public void drawPoly(Graphics g, Color color, List<Point> points)

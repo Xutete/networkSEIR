@@ -6,7 +6,9 @@
 package seir;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import javax.swing.JFrame;
 
 /**
@@ -20,102 +22,109 @@ public class Main {
      */
     public static void main(String[] args) throws IOException
     {
-        /*
-        String[] scenarios = new String[]{"MN_start80"};
+
         
-        for(String x : scenarios)
-        {
-            Network network = new Network(x);
-            //network.gradientDescent();
-            System.out.println(network.randomStart(10));
-            //network.printTotalError();
-        }
-                    //network.calcAvgValues(0, 9);
+
+        Network network = new Network("MN_model2");
+
+        /*
+        Network network = new Network("MN_model2_12");
+
+        network.gradientDescent();
+        
+        network = new Network("MN_travel_12");
+
+        network.gradientDescent();
         */
         
-        int num_threads = 1;
+        network.load(0);
         
-        for(int i = 0; i < num_threads; i++)
+        //network.includeTravel = false;
+
+        //double obj = network.calculateSEIR();
+        
+        /*
+        PrintStream fileout = new PrintStream(new FileOutputStream(network.getDirectory()+"/output/total_cases.txt"), true);
+        for(Zone i : network.getZones())
         {
-            final int start_run = i*10;
-            
-            Thread t = new Thread()
-            {
-                public void run()
-                {
-                    try
-                    {
-                        Network network = new Network("MN_model2");
-                        network.load(0);
-                        network.colorZonesE0(100);
-                        
-                        /*
-                        
-                        
-                        double obj = network.calculateSEIR();
-                        
-                        System.out.println(obj);
-                        */
-                        
-                        //network.gradientDescent();
-                        //network.randomStart(10, start_run);
-                        
-                        
-                        //network.printTotalError();
-                        
-                        /*
-                        network.load("no_xiE");
-                        
-                        double obj = network.calculateSEIR();
-                        
-                        System.out.println(obj);
-                        */
-                        
-                        //PlotErrors test = new PlotErrors(network);
-                        
-                        CountyDisplay test2 = new CountyDisplay(network);
-                        
-                        /*
-                        Zone z = network.findZone(27017);
-                        
-                        
-                        network.calculateGradient_r(z);
 
-                        
-                        double step = network.calculateStep(1, obj);
-                        
-                        for(int pi = 0; pi < network.r_periods.length; pi++)
-                        {
-                            System.out.println(pi+" "+network.r_periods[pi]+"\t"+z.r[pi]+"\t"+z.gradient_r[pi]+"\t"+(z.r[pi]-step*z.gradient_r[pi]));
-                        }
-                        
-                        System.out.println(step);
-                        
-                        network.resetGradients();
-                        
-                        network.calculateGradient_E0(z);
-                        
-                        z.gradient_E0 = -10;
-                        
-                        step = network.calculateStep(1, obj);
-                        
-                        System.out.println(z.E0+"\t"+z.gradient_E0+"\t"+(z.E0-step*z.gradient_E0));
-                        System.out.println(step);
-                        */
-                    }
-                    catch(IOException ex)
-                    {
-                        ex.printStackTrace(System.err);
-                    }
-                }
-            };
-            
-            t.start();
-            
 
-            
+            fileout.println(i.getId()+"\t"+i.getN());
         }
+        fileout.close();
+        */
         
+        //network.printTotalError(new File(network.getDirectory()+"/output/total_error_0.txt"));
+
+        //PlotErrors test = new PlotErrors(network);
+        
+        //network.printAverageRates();
+        //network.colorZonesData(10);
+        //network.colorZonesr(network.getStartTime()+40);
+        //network.colorZonesI(50, network.T-1);
+        network.colorZonesReportedI(10, network.T);
+
+
+        CountyDisplay test2 = new CountyDisplay(network);
+        
+        
+        
+        
+        /*
+
+
+        double obj = network.calculateSEIR();
+
+        System.out.println(obj);
+        */
+
+        //network.gradientDescent();
+        //network.randomStart(10, start_run);
+
+
+        //network.printTotalError();
+
+        /*
+        network.load("no_xiE");
+
+        double obj = network.calculateSEIR();
+
+        System.out.println(obj);
+        */
+
+        //PlotErrors test = new PlotErrors(network);
+
+        //CountyDisplay test2 = new CountyDisplay(network);
+
+        /*
+        Zone z = network.findZone(27017);
+
+
+        network.calculateGradient_r(z);
+
+
+        double step = network.calculateStep(1, obj);
+
+        for(int pi = 0; pi < network.r_periods.length; pi++)
+        {
+            System.out.println(pi+" "+network.r_periods[pi]+"\t"+z.r[pi]+"\t"+z.gradient_r[pi]+"\t"+(z.r[pi]-step*z.gradient_r[pi]));
+        }
+
+        System.out.println(step);
+
+        network.resetGradients();
+
+        network.calculateGradient_E0(z);
+
+        z.gradient_E0 = -10;
+
+        step = network.calculateStep(1, obj);
+
+        System.out.println(z.E0+"\t"+z.gradient_E0+"\t"+(z.E0-step*z.gradient_E0));
+        System.out.println(step);
+        */
+
+
         
         
 

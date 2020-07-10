@@ -35,9 +35,10 @@ public class Network
     
     public static final boolean optimizeParameters = false;
     public static final double INFTY = Double.MAX_VALUE;
+    public static final boolean reduce_travel = true;
     
-    private double inv_sigma = 1.0/6.4; //0.15; // incubation time
-    private double inv_ell = 1.0/7; //0.08* 0.985 + 0.12* 0.015; // recovery time
+    protected double inv_sigma = 1.0/6.4; //0.15; // incubation time
+    protected double inv_ell = 1.0/7; //0.08* 0.985 + 0.12* 0.015; // recovery time
     
     private double gradient_inv_sigma, gradient_inv_ell;
     
@@ -46,17 +47,18 @@ public class Network
     private double gradient_xi, gradient_xiE;
     private double removed_weight = 0.0;
     
-    private int T;
+    protected int T;
     
     private Zone[] zones;
     private Link[][] matrix;
     
     protected TimePeriod[] lambda_periods, r_periods;
     
+    private Date startDate;
     
     private String scenario;
     
-    private boolean includeTravel;
+    protected boolean includeTravel;
     private int startTime = 0;
     
     private boolean randomize;
@@ -71,6 +73,10 @@ public class Network
     private Random rand;
     
     private boolean model2 = false;
+    
+    
+    protected String minlabel, maxlabel;
+    protected Color mincolor, maxcolor;
     
     public Network(String scenario) throws IOException
     {
@@ -311,6 +317,10 @@ public class Network
             {
                 model2 = value.equalsIgnoreCase("true");
             }
+            else if(key.equalsIgnoreCase("ell"))
+            {
+                inv_ell = 1.0/Double.parseDouble(value.trim());
+            }
         }
         filein.close();
         
@@ -494,7 +504,22 @@ public class Network
         }
         
         
-        
+        try
+        {
+            filein = new Scanner(new File("data/"+dir+"/county_data.txt"));
+
+            filein.nextLine();
+
+            while(filein.hasNext())
+            {
+                int id = filein.nextInt();
+                double value = filein.nextDouble();
+
+                findZone(id).data = value;
+            }
+            filein.close();
+        }
+        catch(IOException ex){}
         
         
         filein = new Scanner(new File("data/"+dir+"/timeline_r.txt"));
@@ -506,6 +531,7 @@ public class Network
         try
         {
             start = new SimpleDateFormat("MM/dd/yyyy").parse(filein.nextLine().trim()); 
+            startDate = start;
             timeline.add(0);
         }
         catch(ParseException ex)
@@ -659,11 +685,19 @@ public class Network
                 int start_apply = daysBetween(start, start_apply_date);
                 int end_apply = daysBetween(start, end_apply_date);
                 
+                if(!reduce_travel)
+                {
+                    end_apply = T;
+                }
+                
+                System.out.println("Loaded travel: "+start_apply+" to "+end_apply);
                 
                 // scale up demand to normal then scale down by % change
                 double total_predicted = 0;
                 double total_actual = 0;
                 count = 0;
+                
+                
                 
                 for(int i = start_period; i <= end_period; i++)
                 {
@@ -716,11 +750,22 @@ public class Network
                         
                         double scaledown = (100+change)/100;
 
-                        
-                        matrix[r][c].setNormalDemand(zones[r], zones[c], t, demand*scaleup * scaledown);
+                        if(reduce_travel)
+                        {
+                            matrix[r][c].setNormalDemand(zones[r], zones[c], t, demand*scaleup * scaledown);
+                        }
+                        else
+                        {
+                            matrix[r][c].setNormalDemand(zones[r], zones[c], t, demand);
+                        }
                     }
                 }
                 filein2.close();
+                
+                if(!reduce_travel)
+                {
+                    break;
+                }
                 
             }
             catch(ParseException ex)
@@ -772,11 +817,187 @@ public class Network
         }
     }
     
+    public void colorZonesData(double max)
+    {
+        for(Zone i : zones)
+        {
+            int red = (int)Math.round(255*Math.max(0, Math.min(1, i.data / max)));
+            i.color = new Color(255-red, 255, 255);
+        }
+        
+        minlabel = "0";
+        maxlabel = "≥"+max;
+        mincolor = Color.white;
+        maxcolor = Color.cyan;
+    }
+    
     public void colorZonesE0(int max_E0)
     {
         for(Zone i : zones)
         {
             int red = (int)Math.round(255*Math.min(1, i.E0 / max_E0));
+            i.color = new Color(255, 255-red, 255);
+        }
+        
+        minlabel = "0";
+        maxlabel = "≥"+max_E0;
+        mincolor = Color.white;
+        maxcolor = Color.magenta;
+    }
+    
+    public void colorZonesRpct(double max)
+    {
+        int total_R = 0;
+        
+        for(Zone i : zones)
+        {
+            double pct = i.R[T-1] / i.getN();
+            
+            //System.out.println((pct*100)+" "+pct / (max/100.0));
+            int red = (int)Math.round(255*Math.min(1, pct / (max/100.0)));
+            i.color = new Color(255-red, 255, 255-red);
+            
+            total_R += i.R[T-1];
+        }
+        
+        minlabel = "0%";
+        maxlabel = "≥"+max+"%";
+        mincolor = Color.white;
+        maxcolor = Color.green;
+        
+        System.out.println(total_R);
+    }
+    
+    public void colorZonesLambda()
+    {
+        for(Zone i : zones)
+        {
+            double avg_lambda = 0;
+            double count = 0;
+            
+            for(int t = startTime; t < T; t++)
+            {
+                avg_lambda += i.lambda[index_lambda(t)];
+                count++;
+            }
+            
+            avg_lambda /= count;
+            
+            int red = (int)Math.round(255*Math.min(1, (avg_lambda -1)/2));
+            i.color = new Color(255-red, 255-red, 255);
+        }
+        
+        minlabel = "1";
+        maxlabel = "≥2";
+        mincolor = Color.white;
+        maxcolor = Color.blue;
+    }
+    
+    public void colorZonesr()
+    {
+        for(Zone i : zones)
+        {
+            double avg_r = 0;
+            double count = 0;
+            
+            for(int t = startTime; t < T; t++)
+            {
+                avg_r += i.r[index_r(t)];
+                count++;
+            }
+            
+            avg_r /= count;
+            
+            int red = (int)Math.round(255*Math.min(1, avg_r/1));
+            i.color = new Color(255-red, 255, 255-red);
+        }
+        
+        minlabel = "0";
+        maxlabel = "≥2";
+        mincolor = Color.white;
+        maxcolor = Color.green;
+    }
+    
+    public void colorZonesr(int t)
+    {
+        for(Zone i : zones)
+        {
+
+            int red = (int)Math.round(255*Math.min(1, i.r[index_r(t)]/inv_sigma/2));
+            i.color = new Color(255-red, 255, 255-red);
+        }
+        
+        minlabel = "0";
+        maxlabel = "≥2";
+        mincolor = Color.white;
+        maxcolor = Color.green;
+    }
+    
+    public void colorZonesReportedI(int max, int t)
+    {
+        for(Zone i : zones)
+        {
+            int red = (int)Math.round(255*Math.min(1, i.reportedI[t] / max));
+            i.color = new Color(255, 255-red, 255-red);
+        }
+        
+        minlabel = "0";
+        maxlabel = "≥"+max;
+        mincolor = Color.white;
+        maxcolor = Color.red;
+    }
+    
+    public void colorZonesI(int max, int t)
+    {
+        for(Zone i : zones)
+        {
+            int red = (int)Math.round(255*Math.min(1, i.I[t] / max));
+            i.color = new Color(255, 255-red, 255-red);
+        }
+        
+        minlabel = "0";
+        maxlabel = "≥"+max;
+        mincolor = Color.white;
+        maxcolor = Color.red;
+    }
+    
+    public void printZone(Zone i) throws IOException
+    {
+        printZone(i, new File(getDirectory()+"/graphs/zone_"+i.getId()+".txt"));
+    }
+    
+    public void printZone(Zone i, File file) throws IOException
+    {
+        PrintStream fileout = new PrintStream(new FileOutputStream(file), true);
+        
+        fileout.println("time\treported I\t reported*lambda\tpredicted");
+        
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM/dd/yyyy");
+
+        
+        for(int t = startTime; t < T; t++)
+        {
+            Date date = new Date(startDate.getTime() + 1000L*3600*24*t);
+            
+            fileout.println(simpleDateFormat.format(date)+"\t"+i.reportedI[t]+"\t"+(i.reportedI[t]*i.lambda[index_lambda(t)])+"\t"+i.I[t]);
+        }
+        
+        
+        fileout.close();
+    }
+    
+    public void colorZonesE0Prop()
+    {
+        double max_pct = 0;
+        
+        for(Zone i : zones)
+        {
+            max_pct = Math.max(max_pct, i.E0/i.getN());
+        }
+        
+        for(Zone i : zones)
+        {
+            int red = (int)Math.round(255*Math.min(1, (i.E0 / i.getN()) / max_pct ));
             i.color = new Color(255, 255-red, 255-red);
         }
     }
@@ -834,23 +1055,36 @@ public class Network
         catch(IOException ex){}
     }
     
+    public void printTotalError(File file) throws IOException
+    {
+        PrintStream fileout = new PrintStream(new FileOutputStream(file), true);
+        
+        printTotalError(fileout);
+        
+        fileout.close();
+    }
 
     
     public void printTotalError(PrintStream out) throws IOException
     {
-        out.print("time\ttotal error\t% error\tcount\tpredicted");
+        out.print("time\ttotal error\t% error\tcount\tpredicted\treported*lambda\tlong time\ttotal error\t% error\tcount R\tpredicted R\t reported R*lambda");
         
+        /*
         for(Zone i : zones)
         {
             out.print("\t"+i+" reported\t"+i+" predicted\t"+i+"% error");
         }
+        */
         out.println();
+        
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM/dd/yyyy");
         
         for(int t = startTime; t < T; t++)
         {
             double error = 0;
             double count = 0;
             double predicted = 0;
+            double replambda = 0;
             
             int pi = index_lambda(t);
             
@@ -859,17 +1093,38 @@ public class Network
                 error += Math.abs( i.I[t] - i.lambda[index_lambda(t)] * i.reportedI[t]);
                 predicted += i.I[t];
                 count += i.reportedI[t];
+                replambda += i.lambda[index_lambda(t)] * i.reportedI[t];
             }
 
-            out.print(t+"\t"+error+"\t"+String.format("%.2f\t%.2f\t%.2f", 100.0*error/count, count, predicted));
+            Date date = new Date(startDate.getTime() + 1000L*3600*24*t);
+            out.print(simpleDateFormat.format(date)+"\t"+error+"\t"+(100.0*error/count)+"\t"+ count+"\t"+ predicted+"\t"+replambda+"\t"+date.getTime());
             
+            error = 0;
+            count = 0;
+            predicted = 0;
+            replambda = 0;
+            
+            pi = index_lambda(t);
+            
+            for(Zone i : zones)
+            {
+                error += Math.abs( i.R[t] - i.lambda[index_lambda(t)] * i.reportedR[t]);
+                predicted += i.R[t];
+                count += i.reportedR[t];
+                replambda += i.lambda[index_lambda(t)] * i.reportedR[t];
+            }
+            
+            out.print("\t"+error+"\t"+(100.0*error/count)+"\t"+ count+"\t"+ predicted+"\t"+replambda);
+            
+            /*
             for(Zone i : zones)
             {
                 double predictedi = i.I[t];
                 double reportedi = i.lambda[index_lambda(t)]*i.reportedI[t];
                 double errori = Math.abs(i.I[t] - i.lambda[index_lambda(t)]*i.reportedI[t])/i.reportedI[t];
-                out.printf("\t%.2f\t%.2f\t%.2f", reportedi, predictedi, errori*100.0);
+                out.print(reportedi+"\t"+ predictedi+"\t"+ ( errori*100.0));
             }
+            */
             out.println();
         }
     }
@@ -1023,6 +1278,7 @@ public class Network
             fileout.println("r_periods = "+r_periods.length);
             fileout.println("include travel: "+includeTravel);
             fileout.println("randomize "+randomize);
+            fileout.println("model2 "+model2);
         }
         
         System.out.println(scenario + " run "+run);
@@ -1031,6 +1287,7 @@ public class Network
         System.out.println("r_periods = "+r_periods.length);
         System.out.println("include travel: "+includeTravel);
         System.out.println("randomize "+randomize);
+        System.out.println("model2 "+model2);
         
         
         if(randomize)
@@ -1152,19 +1409,25 @@ public class Network
             
             else
             {
-                resetGradients();
+                
 
                 //System.out.print(xi+" "+xi_E+"\t");
-                calculateGradient_xi();
                 
-                if(!model2)
+                if(includeTravel)
                 {
-                    calculateGradient_xiE();
-                }
+                    resetGradients();
+                
+                    calculateGradient_xi();
 
-                step = calculateStep(iter, obj);
-                updateVariables(step);
-                obj = calculateSEIR();
+                    if(!model2)
+                    {
+                        calculateGradient_xiE();
+                    }
+
+                    step = calculateStep(iter, obj);
+                    updateVariables(step);
+                    obj = calculateSEIR();
+                }
                 
                 //System.out.println("xi step: "+(step * gradient_xi)+" "+(step*gradient_xiE)+"\t"+xi+" "+xi_E);
             }
@@ -1225,9 +1488,31 @@ public class Network
     }
     
     
+    public void printRates(Zone i) throws IOException
+    {
+        PrintStream fileout = new PrintStream(new FileOutputStream(new File("data/"+scenario+"/output/r_lambda_"+i.getId()+".txt")), true);
+        
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM/dd/yyyy");
+        
+        fileout.println("time\tr\tlambda");
+        for(int t = startTime; t < T; t++)
+        {
+
+            
+            Date date = new Date(startDate.getTime() + 1000L*3600*24*t);
+            
+            fileout.println(simpleDateFormat.format(date)+"\t"+(i.r[index_r(t)]/inv_sigma)+"\t"+i.lambda[index_lambda(t)]);
+            
+        }
+        
+        fileout.close();
+    }
+    
     public void printAverageRates() throws IOException 
     {
         PrintStream fileout = new PrintStream(new FileOutputStream(new File("data/"+scenario+"/output/avg_r_lambda.txt")), true);
+        
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM/dd/yyyy");
         
         fileout.println("time\tavg r\tavg lambda");
         for(int t = startTime; t < T; t++)
@@ -1240,11 +1525,11 @@ public class Network
             
             for(Zone i : zones)
             {
-                total += i.r[pi] * i.getN();
+                total += i.r[pi] * i.getN() ;
                 count += i.getN();
             }
             
-            double avg_r = total/count;
+            double avg_r = total/count * 1.0/inv_sigma;
             
             
             total = 0;
@@ -1260,7 +1545,9 @@ public class Network
             
             double avg_lambda = total/count;
             
-            fileout.println(t+"\t"+avg_r+"\t"+avg_lambda);
+            Date date = new Date(startDate.getTime() + 1000L*3600*24*t);
+            
+            fileout.println(simpleDateFormat.format(date)+"\t"+avg_r+"\t"+avg_lambda);
             
         }
         
@@ -1596,6 +1883,7 @@ public class Network
                         if(jx != ix)
                         {
                             Zone j = zones[jx];
+
 
                             i.dS[t+1] -= xi*i.r[pi]*i.dS[t] * matrix[jx][ix].getMu(t) * j.I[t] / j.getN();
                             i.dS[t+1] -= xi*i.r[pi] * i.S[t] * matrix[jx][ix].getMu(t) * j.dI[t] / j.getN();

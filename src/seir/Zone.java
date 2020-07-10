@@ -32,6 +32,8 @@ public class Zone
     
     protected Color color;
     
+    protected double data;
+    
     public Zone(int id, double N)
     {
         index = next_index++;

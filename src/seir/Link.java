@@ -12,11 +12,13 @@ package seir;
 public class Link 
 {
     private double[] mu;
+    private double[] trips;
     
 
     public Link(int T)
     {
         mu = new double[T];
+        trips = new double[T];
     }
     
  
@@ -24,6 +26,7 @@ public class Link
     public void setNormalDemand(Zone source, Zone dest, int t, double normal_demand)
     {
         mu[t] = normal_demand / source.getN();
+        trips[t] = normal_demand;
     }
     
     
@@ -31,6 +34,7 @@ public class Link
     {
         return mu[t];
     }
+
     
     
     public void initialize(int T)
