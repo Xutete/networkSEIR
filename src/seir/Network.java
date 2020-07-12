@@ -33,7 +33,7 @@ import java.util.Random;
 public class Network 
 {
     
-    public static final boolean optimizeParameters = false;
+    public static final boolean optimizeParameters = true;
     public static final double INFTY = Double.MAX_VALUE;
     public static final boolean reduce_travel = true;
     
@@ -78,10 +78,22 @@ public class Network
     protected String minlabel, maxlabel;
     protected Color mincolor, maxcolor;
     
+    private double total_infections;
+    private double infections_from_travel;
+    
     public Network(String scenario) throws IOException
     {
         
         
+        
+        this.scenario = scenario;
+        readNetwork(scenario);
+    }
+    
+    public Network(String scenario, int T) throws IOException
+    {
+        
+        this.T = T;
         
         this.scenario = scenario;
         readNetwork(scenario);
@@ -369,7 +381,10 @@ public class Network
         }
         filein.close();
         
-        T = count;
+        if(T == 0)
+        {
+            T = count;
+        }
         
         
         filein = new Scanner(new File("data/"+dir+"/MN_infected.csv"));
@@ -690,7 +705,7 @@ public class Network
                     end_apply = T;
                 }
                 
-                System.out.println("Loaded travel: "+start_apply+" to "+end_apply);
+                
                 
                 // scale up demand to normal then scale down by % change
                 double total_predicted = 0;
@@ -710,6 +725,9 @@ public class Network
                 }
                 
                 
+                double total1 = 0;
+                double total2 = 0;
+                
                 double scaleup = 1.0 / (total_actual / total_predicted);
                 
                 Scanner filein2 = new Scanner(new File("data/"+scenario+"/"+datafile));
@@ -723,6 +741,8 @@ public class Network
                     int dest = chopper.nextInt();
                     double demand = chopper.nextDouble();
                     
+                    total1 += demand;
+                    
                     
                     if(!zoneLookup.containsKey(source) || !zoneLookup.containsKey(dest))
                     {
@@ -735,6 +755,8 @@ public class Network
                     {
                         continue;
                     }
+                    
+                    total2 += demand;
                 
                     for(int t = (int)Math.max(0, start_apply); t <= end_apply && t < T; t++)
                     {
@@ -761,6 +783,8 @@ public class Network
                     }
                 }
                 filein2.close();
+                
+                System.out.println("Loaded travel: "+start_apply+" to "+end_apply+" "+total1+" "+total2);
                 
                 if(!reduce_travel)
                 {
@@ -825,7 +849,7 @@ public class Network
             i.color = new Color(255-red, 255, 255);
         }
         
-        minlabel = "0";
+        minlabel = "≤0";
         maxlabel = "≥"+max;
         mincolor = Color.white;
         maxcolor = Color.cyan;
@@ -918,6 +942,31 @@ public class Network
         maxcolor = Color.green;
     }
     
+    public double getTotalCases()
+    {
+        double output = 0;
+        
+        for(Zone i : zones)
+        {
+            output += getTotalCases(i);
+        }
+        
+        return output;
+    }
+    
+    public double getTotalCases(Zone i)
+    {
+        double output = 0;
+        for(int t = startTime; t < T; t++)
+        {
+            output += i.I[t];
+        }
+        
+        return output * inv_ell;
+    }
+    
+    
+    
     public void colorZonesr(int t)
     {
         for(Zone i : zones)
@@ -933,6 +982,21 @@ public class Network
         maxcolor = Color.green;
     }
 
+    public void colorZonesTravelI(int max)
+    {
+        for(Zone i : zones)
+        {
+            int red = (int)Math.round(255*Math.min(1, i.infections_from_travel/(i.getN()/1000) / (max)));
+            
+            //System.out.println(i.infections_from_travel/(i.getN()/1000));
+            i.color = new Color(255, 255-red, 255-red);
+        }
+        
+        minlabel = "0";
+        maxlabel = "≥"+max;
+        mincolor = Color.white;
+        maxcolor = Color.red;
+    }
     
     public void colorZonesReportedI(int max, int t)
     {
@@ -940,8 +1004,7 @@ public class Network
         {
             double cases = i.reportedI[t];
             double pop = i.getN()/1000;
-            
-            i.data = cases/pop;
+
             
             int red = (int)Math.round(255*Math.min(1, (cases) / max));
             i.color = new Color(255, 255-red, 255-red);
@@ -953,14 +1016,21 @@ public class Network
         maxcolor = Color.red;
     }
     
+    public Date getDate(int t)
+    {
+        Date date = new Date(startDate.getTime() + 1000L*3600*24*t);
+        
+        return date;
+    }
+    
     public void colorZonesI(int max, int t)
     {
         for(Zone i : zones)
         {
             double cases = i.I[t];
             double pop = i.getN()/1000;
-            
-            i.data = cases/pop;
+
+            //System.out.println(i.data);
             
             int red = (int)Math.round(255*Math.min(1, i.I[t] / max));
             i.color = new Color(255, 255-red, 255-red);
@@ -1078,7 +1148,7 @@ public class Network
     
     public void printTotalError(PrintStream out) throws IOException
     {
-        out.print("time\ttotal error\t% error\tcount\tpredicted\treported*lambda\tlong time\ttotal error\t% error\tcount R\tpredicted R\t reported R*lambda");
+        out.print("time\ttotal error\t% error\tcount\tpredicted\treported*lambda\tlong time\ttotal error\t% error\tcount R\tpredicted R\t reported R*lambda\ttrips");
         
         /*
         for(Zone i : zones)
@@ -1126,6 +1196,7 @@ public class Network
             }
             
             out.print("\t"+error+"\t"+(100.0*error/count)+"\t"+ count+"\t"+ predicted+"\t"+replambda);
+            out.print("\t"+getTotalTrips(t));
             
             /*
             for(Zone i : zones)
@@ -1557,13 +1628,53 @@ public class Network
         return output;
     }
     
+    public double getAvgRepRate(int t)
+    {
+        double total = 0;
+        double count = 0;
+
+        int pi = index_r(t);
+
+        for(Zone i : zones)
+        {
+
+            double r = calcRepRate(i, t);
+            total += r * i.getN();
+            count += i.getN();
+
+
+        }
+
+        return total/count;
+    }
+    
+    public double getAvgRho(int t)
+    {
+        double total = 0;
+        double count = 0;
+
+        int pi = index_r(t);
+
+        for(Zone i : zones)
+        {
+
+            double r = i.r[pi];
+            total += r * i.getN();
+            count += i.getN();
+
+
+        }
+
+        return total/count;
+    }
+    
     public void printAverageRates() throws IOException 
     {
         PrintStream fileout = new PrintStream(new FileOutputStream(new File("data/"+scenario+"/output/avg_r_lambda.txt")), true);
         
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM/dd/yyyy");
         
-        fileout.println("time\tavg r\tavg lambda");
+        fileout.println("time\tavg r\tavg lambda\tavg. rho");
         for(int t = startTime; t < T; t++)
         {
             
@@ -1600,9 +1711,24 @@ public class Network
             
             double avg_lambda = total/count;
             
+            
+            total = 0;
+            count = 0;
+            
+            pi = index_r(t);
+            
+            for(Zone i : zones)
+            {
+                total += i.r[pi] * i.getN();
+                count += i.getN();
+            }
+            
+            double avg_rho = total/count;
+            
+            
             Date date = new Date(startDate.getTime() + 1000L*3600*24*t);
             
-            fileout.println(simpleDateFormat.format(date)+"\t"+avg_r+"\t"+avg_lambda);
+            fileout.println(simpleDateFormat.format(date)+"\t"+avg_r+"\t"+avg_lambda+"\t"+avg_rho);
             
         }
         
@@ -2417,6 +2543,8 @@ public class Network
     {
         //System.out.println("step: "+step);
         
+        total_infections = 0;
+        infections_from_travel = 0;
         
         for(Zone i : zones)
         {
@@ -2432,6 +2560,8 @@ public class Network
                 System.out.println("start "+i.I[startTime]+" "+i.E[startTime]);
             }
             
+            i.total_infections = 0;
+            i.infections_from_travel = 0;
         }
         
         double newxi = Math.min(1, Math.max(0, xi-step*gradient_xi));
@@ -2445,17 +2575,21 @@ public class Network
             {
                 Zone i = zones[ix];
                 
-                if(i.getN(t) == 0)
-                {
-                    System.out.println("N is 0\t2");
-                }
-                double fSE = Math.min(i.S[t], Math.min(20, Math.max(0, i.r[pi_r] - step*i.gradient_r[pi_r])) * i.S[t] * i.I[t]/i.getN());
-                
-                if((""+i.gradient_r[pi_r]).equals("NaN"))
-                {
-                    System.out.println("grad r is nan");
-                }
 
+                
+                double newr = Math.min(20, Math.max(0, i.r[pi_r] - step*i.gradient_r[pi_r]));
+                
+                /*
+                if(t > 152)
+                {
+                    pi_r = index_r(startTime+10);
+                    newr = Math.min(20, Math.max(0, i.r[pi_r] - step*i.gradient_r[pi_r]));
+                }
+                */
+                
+                double fSE = Math.min(i.S[t], newr * i.S[t] * i.I[t]/i.getN());
+
+                
                 i.S[t+1] = i.S[t] - fSE ;
                 
                 i.E[t+1] = i.E[t] + fSE - (inv_sigma - step*gradient_inv_sigma) *i.E[t];
@@ -2463,6 +2597,9 @@ public class Network
                 i.I[t+1] = i.I[t] + (inv_sigma - step*gradient_inv_sigma)*i.E[t] - (inv_ell - step*gradient_inv_ell)*i.I[t];
                 
                 i.R[t+1] = i.R[t] + (inv_ell - step*gradient_inv_ell)*i.I[t];
+                
+                total_infections += fSE;
+                i.total_infections += fSE;
                 
                 if(model2 && includeTravel)
                 {
@@ -2474,25 +2611,27 @@ public class Network
                         {
                             Zone j = zones[jx];
                         
-                            fSE += Math.max(0, Math.min(1, xi - step*gradient_xi)) *Math.min(20, Math.max(0, i.r[pi_r] - step*i.gradient_r[pi_r])) 
-                                    * i.S[t] * j.I[t]/j.getN() * matrix[jx][ix].getMu(t);
+                            fSE += Math.max(0, Math.min(1, xi - step*gradient_xi)) *newr * i.S[t] * j.I[t]/j.getN() * matrix[jx][ix].getMu(t);
                         }  
                     }
                     
                     
-                    fSE = Math.min(i.S[t], fSE);
-                    
-                    i.S[t+1] -= fSE;
-                    i.E[t+1] += fSE;
+                    //if(t < 153)
+                    {
+                        fSE = Math.min(i.S[t], fSE);
+
+                        i.S[t+1] -= fSE;
+                        i.E[t+1] += fSE;
+
+                        total_infections += fSE;
+                        i.total_infections += fSE;
+
+                        infections_from_travel += fSE;
+                        i.infections_from_travel += fSE;
+                    }
                 }
                 
-                
-                /*
-                if(i.getId() == 27017)
-                {
-                    System.out.println(t+"\t"+i.E[t]+"\t"+i.I[t]+"\t"+(i.reportedI[t] * i.lambda[index_lambda(t)]));
-                }
-                */
+
                 
                 if(printdebug)
                 {
@@ -2547,8 +2686,13 @@ public class Network
                 output += removed_weight * temp*temp;
             }
         }
-
         
+        /*
+        for(Zone i : zones)
+        {
+            i.data = i.infections_from_travel / i.total_infections;
+        }
+        */
         return output;
     }
 

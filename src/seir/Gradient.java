@@ -26,15 +26,25 @@ public class Gradient extends TreeMap<Double, Color>
             return Color.lightGray;
         }
         
+        if(containsKey(data))
+        {
+            return get(data);
+        }
+        
         
         Color minC = null;
         Color maxC = null;
         double min = 0;
         double max = 0;
         
-        if(data > lastKey())
+        if(data >= lastKey())
         {
             return get(lastKey());
+        }
+        
+        if(data <= firstKey())
+        {
+            return get(firstKey());
         }
         
         for(double k : keySet())
@@ -52,15 +62,24 @@ public class Gradient extends TreeMap<Double, Color>
             }
         }
         
+        max = Math.log10(max);
+        min = Math.log10(min);
         
-        
+        if(minC == null || maxC == null)
+        {
+            System.out.println(data+" "+minC+" "+maxC);
+        }
         
         double val = Math.log10(data);
  
         double scale = (val - min) / (max - min);
+
         
-        int red = (int)Math.round(val * (maxC.getRed() - minC.getRed()) + minC.getRed());
+        int red = (int)Math.round(scale * (maxC.getRed() - minC.getRed()) + minC.getRed());
+        int green = (int)Math.round(scale * (maxC.getGreen() - minC.getGreen()) + minC.getGreen());
+        int blue = (int)Math.round(scale * (maxC.getBlue() - minC.getBlue()) + minC.getBlue());
+
         
-        return Color.red;
+        return new Color(red, green, blue);
     }
 }

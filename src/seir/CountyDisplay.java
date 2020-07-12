@@ -34,6 +34,11 @@ public class CountyDisplay extends JFrame
         initialize();
     }
     
+    public MapViewer getMap()
+    {
+        return map;
+    }
+    
     public CountyDisplay(Network network, Gradient gradient)
     {
         map = new MapViewer(network, 1200, 900, gradient);

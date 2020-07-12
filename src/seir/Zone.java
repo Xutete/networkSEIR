@@ -34,6 +34,9 @@ public class Zone
     
     protected double data;
     
+    protected double total_infections;
+    protected double infections_from_travel;
+    
     public Zone(int id, double N)
     {
         index = next_index++;
@@ -45,6 +48,8 @@ public class Zone
         
     }
     
+    
+
     public List<Location> getBoundary()
     {
         return boundary;

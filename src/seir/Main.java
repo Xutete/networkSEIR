@@ -27,8 +27,10 @@ public class Main {
 
         
 
-        Network network = new Network("MN_model2");
+        Network network = new Network("MN_model2", 345);
 
+        // 345 max time
+        
         /*
         Network network = new Network("MN_model2_12");
 
@@ -39,42 +41,76 @@ public class Main {
         network.gradientDescent();
         */
         
+        
+        
+        
         network.load(0);
         
-        //network.includeTravel = false;
+        System.out.println("trips at 151: "+network.getTotalTrips(151));
 
         double obj = network.calculateSEIR();
         
+        System.out.println("T="+network.T);
+        
+
         /*
         PrintStream fileout = new PrintStream(new FileOutputStream(network.getDirectory()+"/output/total_cases.txt"), true);
         for(Zone i : network.getZones())
         {
 
 
-            fileout.println(i.getId()+"\t"+i.getN());
+            fileout.println(i.getId()+"\t"+network.getTotalCases(i));
         }
         fileout.close();
+        
+        
         */
         
-        //network.printTotalError(new File(network.getDirectory()+"/output/total_error_0.txt"));
+        
+        
+        network.printTotalError(new File(network.getDirectory()+"/output/total_error_projected.txt"));
 
         //PlotErrors test = new PlotErrors(network);
         
         //network.printAverageRates();
-        //network.colorZonesData(10);
+        //network.colorZonesTravelI(4);
         //network.colorZonesr(network.getStartTime()+41);
-        //network.colorZonesLambda();
-        //network.colorZonesI(50, network.T-1);
-        network.colorZonesReportedI(10, network.T-1);
+        network.colorZonesLambda();
+
+        //network.colorZonesData(10);
+        //network.colorZonesI(500, 100);
         //network.colorZonesRpct(2);
 
         Gradient colors = new Gradient();
         
-        colors.put(0.0, Color.white);
-        colors.put(100.0, Color.red);
 
-        CountyDisplay test2 = new CountyDisplay(network, colors);
+        colors.put(Math.pow(10, -2), Color.white);
+        colors.put(Math.pow(10, -1.6), new Color(255, 239, 163));
+        colors.put(Math.pow(10, -1.25), new Color(255, 230, 140));
+        colors.put(Math.pow(10, -0.9), new Color(255, 191, 82));
+        colors.put(Math.pow(10, -0.5), new Color(255, 108, 41));
+        colors.put(Math.pow(10, 0.25), new Color(230, 0, 30));
+        colors.put(Math.pow(10, 1), new Color(128, 0, 0));
+
         
+        CountyDisplay test2 = new CountyDisplay(network);
+        MapViewer map = test2.getMap();
+        
+        
+        /*
+        for(int t = network.getStartTime(); t < network.T; t++)
+        {
+            map.setTime(t);
+            try
+            {
+                map.saveHighResScreenshot(new File(network.getDirectory()+"/timeline/t_"+t+".png"));
+            }
+            catch(Exception ex)
+            {
+                ex.printStackTrace(System.err);
+            }
+        }
+        */
         
         //network.printTripsPerDay();
         
