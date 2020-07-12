@@ -24,11 +24,25 @@ public class CountyDisplay extends JFrame
 {
     private MapViewer map;
     private int image_count = 0;
+    private Network network;
     
     public CountyDisplay(Network network)
     {
+        this.network = network;
         map = new MapViewer(network, 900, 900);
         
+        initialize();
+    }
+    
+    public CountyDisplay(Network network, Gradient gradient)
+    {
+        map = new MapViewer(network, 1200, 900, gradient);
+        this.network = network;
+        initialize();
+    }
+    
+    private void initialize()
+    {
         JButton screenshot2 = new JButton("Screenshot");
         
         JButton screenshot = new JButton("Hi-res screenshot");

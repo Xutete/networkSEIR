@@ -5,10 +5,12 @@
  */
 package seir;
 
+import java.awt.Color;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.TreeMap;
 import javax.swing.JFrame;
 
 /**
@@ -41,7 +43,7 @@ public class Main {
         
         //network.includeTravel = false;
 
-        //double obj = network.calculateSEIR();
+        double obj = network.calculateSEIR();
         
         /*
         PrintStream fileout = new PrintStream(new FileOutputStream(network.getDirectory()+"/output/total_cases.txt"), true);
@@ -60,15 +62,21 @@ public class Main {
         
         //network.printAverageRates();
         //network.colorZonesData(10);
-        //network.colorZonesr(network.getStartTime()+40);
+        //network.colorZonesr(network.getStartTime()+41);
+        //network.colorZonesLambda();
         //network.colorZonesI(50, network.T-1);
-        network.colorZonesReportedI(10, network.T);
+        network.colorZonesReportedI(10, network.T-1);
+        //network.colorZonesRpct(2);
 
+        Gradient colors = new Gradient();
+        
+        colors.put(0.0, Color.white);
+        colors.put(100.0, Color.red);
 
-        CountyDisplay test2 = new CountyDisplay(network);
+        CountyDisplay test2 = new CountyDisplay(network, colors);
         
         
-        
+        //network.printTripsPerDay();
         
         /*
 

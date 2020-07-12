@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeMap;
 import javax.imageio.ImageIO;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
@@ -59,6 +60,7 @@ import org.openstreetmap.gui.jmapviewer.tilesources.OsmTileSource;
 public class MapViewer extends JMapViewer
 {
 
+    private boolean drawLegend = true;
     
     private int time;
     
@@ -69,17 +71,39 @@ public class MapViewer extends JMapViewer
     
     private Network network;
     
+    private Gradient colors;
+    
     public MapViewer(Network network, int viewWidth, int viewHeight)
     {
         this.network = network;
         setPreferredSize(new Dimension(viewWidth, viewHeight));
 
+        colors = null;
+        scale = 1;
+        drawSelection = false;
+        
+        setFont(new Font("Arial", Font.BOLD, 14));
+        
+        setZoom(7);
+        recenter();
+
+    }
+    
+    public MapViewer(Network network, int viewWidth, int viewHeight, Gradient colors)
+    {
+        this.network = network;
+        setPreferredSize(new Dimension(viewWidth, viewHeight));
+
+        setDisplayOSM(false);
+        this.colors = colors;
+        
         
         scale = 1;
         drawSelection = false;
         
         setFont(new Font("Arial", Font.BOLD, 14));
         
+        setZoom(7);
         recenter();
 
     }
@@ -160,7 +184,14 @@ public class MapViewer extends JMapViewer
         double center_x = (maxX + minX)/2;
         double center_y = (maxY + minY)/2;
         
-        setDisplayPosition(new Point(getWidth()/2, getHeight()/2), new Coordinate(center_y, center_x), zoom);
+        if(colors == null)
+        {
+            setDisplayPosition(new Point(getWidth()/2, getHeight()/2), new Coordinate(center_y, center_x), zoom);
+        }
+        else
+        {
+            setDisplayPosition(new Point(getWidth()/2-300, getHeight()/2), new Coordinate(center_y, center_x), zoom);
+        }
         repaint();
     }
     
@@ -170,6 +201,8 @@ public class MapViewer extends JMapViewer
     
     protected void paintComponent(Graphics window) 
     {
+        
+        
         Graphics2D g = (Graphics2D)window;
         
         super.paintComponent(g);
@@ -179,13 +212,23 @@ public class MapViewer extends JMapViewer
         
         Graphics2D g2 = (Graphics2D) image.getGraphics();
         
-        g2.setStroke(new BasicStroke(3));
         
-        g2.setColor(new Color(100, 100, 100));
+        
+        if(colors == null)
+        {
+            g2.setColor(new Color(100, 100, 100));
+            g2.setStroke(new BasicStroke(4));
+        }
+        else
+        {
+            g2.setColor(Color.white);
+            g2.setStroke(new BasicStroke(5));
+        }
+        
         g2.fillRect(0, 0, getWidth(), getHeight());
         
         
-        
+        g.setStroke(new BasicStroke(2));
         
         
         
@@ -205,7 +248,7 @@ public class MapViewer extends JMapViewer
                 
                 if(j > start && coords.get(j).equals(coords.get(start)))
                 {
-                    fillPoly(g2, i.color, points);
+                    fillPoly(g2, colors.getColor(i.data), points);
                     
                     points.clear();
                     start = j+1;
@@ -250,58 +293,76 @@ public class MapViewer extends JMapViewer
         }
 
         Graphics2D g2d = (Graphics2D) g.create();
-        g2d.setComposite(AlphaComposite.SrcOver.derive(0.5f));
+        
+        if(colors == null)
+        {
+            g2d.setComposite(AlphaComposite.SrcOver.derive(0.5f));
+        }
         
         g2d.drawImage(image, 0, 0, image.getWidth(), image.getHeight(), null);
         
 
-        Point legendp = this.getMapPosition(46.598787, -91.384587);
-        
-        
-        int legendx = (int)(getWidth()*0.75);
-        int legendy = getHeight()/2;
-        
-        if(legendp != null)
+        if(colors == null)
         {
-            legendx = (int)legendp.getX();
-            legendy = (int)legendp.getY();
-        }
-        
-        g.setColor(Color.white);
-        
-        g.fillRect(legendx, legendy, (int)(getWidth()/7.0), getHeight()/3);
-        
-        g.setColor(Color.black);
-        
-        g.drawRect(legendx, legendy, (int)(getWidth()/7.0), getHeight()/3);
-        
-        
-        
-        int fontsize = getHeight()/18;
-        
-        g.setFont(new Font("TimesRoman", Font.PLAIN, (int)(fontsize/2)));
-        
-        int height = getHeight()/3 - (int)(fontsize*1.5);
-        
-        for(int y = 0; y < height; y++)
-        {
-            int mixR = network.mincolor.getRed()  + (int)Math.round(((double)(height - y)/height) * (network.maxcolor.getRed() - network.mincolor.getRed()));
-            int mixG = network.mincolor.getGreen()  + (int)Math.round(((double)(height - y)/height) * (network.maxcolor.getGreen() - network.mincolor.getGreen()));
-            int mixB = network.mincolor.getBlue()  + (int)Math.round(((double)(height - y)/height) * (network.maxcolor.getBlue() - network.mincolor.getBlue()));
-            
-            g.setColor(new Color(mixR, mixG, mixB, 160));
-            
-            g.drawLine((int)(legendx+fontsize/4), legendy + (int)(fontsize)+y, (int)(legendx+fontsize/4+fontsize/2), legendy + (int)(fontsize)+y);
-        }
-        
-        g.setColor(Color.black);
-        
-        g.drawRect((int)(legendx+fontsize/4), legendy + (int)(fontsize), fontsize/2, height);
+            Point legendp = this.getMapPosition(46.598787, -91.384587);
 
-        g.drawString("Legend", (int)(legendx)+fontsize/4, legendy+fontsize/6+fontsize/2);
-        
-        g.drawString(network.maxlabel, (int)(legendx+fontsize/4+fontsize/2+10), legendy + (int)(fontsize)+fontsize/3);
-        g.drawString(network.minlabel, (int)(legendx+fontsize/4+fontsize/2+10), legendy + height+ (int)(fontsize));
+
+            int legendx = (int)(getWidth()*0.75);
+            int legendy = getHeight()/2;
+
+            if(legendp != null)
+            {
+                legendx = (int)legendp.getX();
+                legendy = (int)legendp.getY();
+            }
+
+            g.setColor(Color.white);
+
+            g.fillRect(legendx, legendy, (int)(getWidth()/7.0), getHeight()/3);
+
+            g.setColor(Color.black);
+
+            g.drawRect(legendx, legendy, (int)(getWidth()/7.0), getHeight()/3);
+
+
+
+            int fontsize = getHeight()/18;
+
+            g.setFont(new Font("TimesRoman", Font.PLAIN, (int)(fontsize/2)));
+
+            int height = (int)(getHeight()/3.0 - fontsize);
+
+            for(int y = 0; y < height; y++)
+            {
+                int mixR = network.mincolor.getRed()  + (int)Math.round(((double)(height - y)/height) * (network.maxcolor.getRed() - network.mincolor.getRed()));
+                int mixG = network.mincolor.getGreen()  + (int)Math.round(((double)(height - y)/height) * (network.maxcolor.getGreen() - network.mincolor.getGreen()));
+                int mixB = network.mincolor.getBlue()  + (int)Math.round(((double)(height - y)/height) * (network.maxcolor.getBlue() - network.mincolor.getBlue()));
+
+                g.setColor(new Color(mixR, mixG, mixB, 160));
+
+                g.drawLine((int)(legendx+fontsize/4), legendy + (int)(fontsize*0.5)+y, (int)(legendx+fontsize/4+fontsize/2), legendy + (int)(fontsize*0.5)+y);
+            }
+
+            g.setColor(Color.black);
+
+            g.drawRect((int)(legendx+fontsize/4), legendy + (int)(fontsize*0.5), fontsize/2, height);
+
+
+            g.drawString(network.maxlabel, (int)(legendx+fontsize/4+fontsize/2+10), legendy + (int)(fontsize*0.5)+fontsize/3);
+            g.drawString(network.minlabel, (int)(legendx+fontsize/4+fontsize/2+10), legendy + height+ (int)(fontsize*0.5));
+        }
+        else
+        {
+            int legendy = 160;
+            int legendx = getWidth()- (int)(getWidth()/2.5)+50;
+            
+            int legendheight = getHeight()-legendy*2;
+            int legendwidth = 50;
+            
+            g.setColor(Color.black);
+            
+            g.drawRect(legendx, legendy, legendwidth, legendheight);
+        }
     }
     
     public void drawPoly(Graphics g, Color color, List<Point> points)
@@ -410,7 +471,7 @@ public class MapViewer extends JMapViewer
             {
                 int width = getWidth()*2;
                 int height = getHeight()*2;
-                MapViewer map2 = new MapViewer(network, width, height);
+                MapViewer map2 = new MapViewer(network, width, height, colors);
                 map2.setSize(new Dimension(width, height));
 
 
@@ -433,20 +494,24 @@ public class MapViewer extends JMapViewer
                 
                 Graphics g = image.getGraphics();
                 
-                for(int i = 0; i < 10; i++)
+                if(colors == null)
                 {
-                    map2.paintComponent(g);
-                    try
+                    for(int i = 0; i < 10; i++)
                     {
-                        Thread.sleep(1000);
+                        map2.paintComponent(g);
+                        try
+                        {
+                            Thread.sleep(1000);
+                        }
+                        catch(Exception ex)
+                        {
+                            ex.printStackTrace(System.err);
+                        }
+
+
                     }
-                    catch(Exception ex)
-                    {
-                        ex.printStackTrace(System.err);
-                    }
-                
-                    
                 }
+
                 map2.paintComponent(g);
 
                 g.setColor(Color.black);
@@ -465,7 +530,15 @@ public class MapViewer extends JMapViewer
 
                         minx = (int)Math.min(minx, p.x-30);
                         miny = (int)Math.min(miny, p.y-30);
-                        maxx = (int)Math.max(maxx, p.x+30);
+                        
+                        if(colors == null || !drawLegend)
+                        {
+                            maxx = (int)Math.max(maxx, p.x+30);
+                        }
+                        else 
+                        {
+                            maxx = (int)Math.max(maxx, p.x+30+400);
+                        }
                         maxy = (int)Math.max(maxy, p.y+30);
                     }
 
@@ -497,8 +570,10 @@ public class MapViewer extends JMapViewer
                     ex.printStackTrace(System.err);
                 }
                 
-                JOptionPane.showMessageDialog(frame, "Screenshot saved in "+file.getName(), "Screenshot saved", JOptionPane.INFORMATION_MESSAGE);
-            
+                if(colors == null)
+                {
+                    JOptionPane.showMessageDialog(frame, "Screenshot saved in "+file.getName(), "Screenshot saved", JOptionPane.INFORMATION_MESSAGE);
+                }
             }
         };
         t.start();

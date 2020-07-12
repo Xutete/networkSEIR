@@ -855,7 +855,7 @@ public class Network
             
             //System.out.println((pct*100)+" "+pct / (max/100.0));
             int red = (int)Math.round(255*Math.min(1, pct / (max/100.0)));
-            i.color = new Color(255-red, 255, 255-red);
+            i.color = new Color(255, 255-red, 255);
             
             total_R += i.R[T-1];
         }
@@ -863,7 +863,7 @@ public class Network
         minlabel = "0%";
         maxlabel = "≥"+max+"%";
         mincolor = Color.white;
-        maxcolor = Color.green;
+        maxcolor = Color.magenta;
         
         System.out.println(total_R);
     }
@@ -887,8 +887,8 @@ public class Network
             i.color = new Color(255-red, 255-red, 255);
         }
         
-        minlabel = "1";
-        maxlabel = "≥2";
+        minlabel = "≤50%";
+        maxlabel = "100%";
         mincolor = Color.white;
         maxcolor = Color.blue;
     }
@@ -923,7 +923,7 @@ public class Network
         for(Zone i : zones)
         {
 
-            int red = (int)Math.round(255*Math.min(1, i.r[index_r(t)]/inv_sigma/2));
+            int red = (int)Math.round(255*Math.min(1, calcRepRate(i, t)/2));
             i.color = new Color(255-red, 255, 255-red);
         }
         
@@ -932,12 +932,18 @@ public class Network
         mincolor = Color.white;
         maxcolor = Color.green;
     }
+
     
     public void colorZonesReportedI(int max, int t)
     {
         for(Zone i : zones)
         {
-            int red = (int)Math.round(255*Math.min(1, i.reportedI[t] / max));
+            double cases = i.reportedI[t];
+            double pop = i.getN()/1000;
+            
+            i.data = cases/pop;
+            
+            int red = (int)Math.round(255*Math.min(1, (cases) / max));
             i.color = new Color(255, 255-red, 255-red);
         }
         
@@ -951,6 +957,11 @@ public class Network
     {
         for(Zone i : zones)
         {
+            double cases = i.I[t];
+            double pop = i.getN()/1000;
+            
+            i.data = cases/pop;
+            
             int red = (int)Math.round(255*Math.min(1, i.I[t] / max));
             i.color = new Color(255, 255-red, 255-red);
         }
@@ -1508,6 +1519,44 @@ public class Network
         fileout.close();
     }
     
+    public void printTripsPerDay() throws IOException
+    {
+        PrintStream fileout = new PrintStream(new FileOutputStream(new File("data/"+scenario+"/output/trips.txt")), true);
+        
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM/dd/yyyy");
+        
+        fileout.println("time\ttrips");
+        for(int t = startTime; t < T; t++)
+        {
+
+            
+            Date date = new Date(startDate.getTime() + 1000L*3600*24*t);
+            
+            fileout.println(simpleDateFormat.format(date)+"\t"+getTotalTrips(t));
+            
+        }
+        
+        fileout.close();
+    }
+    
+    public double getTotalTrips(int t)
+    {
+        double output = 0.0;
+        
+        for(int r = 0; r < matrix.length; r++)
+        {
+            for(int c = 0; c < matrix[r].length; c++)
+            {
+                if(r != c)
+                {
+                    output += matrix[r][c].getTrips(t);
+                }
+            }
+        }
+        
+        return output;
+    }
+    
     public void printAverageRates() throws IOException 
     {
         PrintStream fileout = new PrintStream(new FileOutputStream(new File("data/"+scenario+"/output/avg_r_lambda.txt")), true);
@@ -1525,11 +1574,17 @@ public class Network
             
             for(Zone i : zones)
             {
-                total += i.r[pi] * i.getN() ;
+                
+                double r = calcRepRate(i, t);
+                total += r * i.getN();
                 count += i.getN();
+                
+
             }
             
-            double avg_r = total/count * 1.0/inv_sigma;
+            double avg_r = total/count;
+            
+            
             
             
             total = 0;
@@ -1539,7 +1594,7 @@ public class Network
             
             for(Zone i : zones)
             {
-                total += i.lambda[pi] * i.getN();
+                total += 1.0/i.lambda[pi] * i.getN();
                 count += i.getN();
             }
             
@@ -1554,6 +1609,42 @@ public class Network
         fileout.close();
     }
     
+    public double calcRepRate(Zone i, int t)
+    {
+        double r = 0.0;
+                
+        double num = 0.0;
+        double denom = 0.0;
+        
+        int pi = index_r(t);
+
+        num += i.r[pi] * i.S[t] * i.I[t]/i.getN();
+        denom += i.I[t];
+
+        int ix = i.getIdx();
+
+        for(int jx = 0; jx < zones.length; jx++)
+        {
+            Zone j = zones[jx];
+
+            if(ix != jx)
+            {
+                num += xi * i.r[pi] * i.S[t] * matrix[jx][ix].getMu(t)*j.I[t] / j.getN();
+                denom += xi * i.r[pi] * matrix[jx][ix].getMu(t)*j.I[t];
+            }
+        }
+
+        if(denom == 0)
+        {
+            r = i.r[pi] / inv_ell;
+        }
+        else
+        {
+            r = num/denom / inv_ell;
+        }
+        
+        return r;
+    }
     
     public double calculateRemovedError()
     {

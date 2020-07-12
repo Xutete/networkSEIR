@@ -35,6 +35,10 @@ public class Link
         return mu[t];
     }
 
+    public double getTrips(int t)
+    {
+        return trips[t];
+    }
     
     
     public void initialize(int T)
