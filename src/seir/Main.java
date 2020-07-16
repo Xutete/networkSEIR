@@ -27,12 +27,12 @@ public class Main {
 
         
 
-        Network network = new Network("MN_model2");
+        Network network = new Network("TX");
 
         // 345 max time
         //network.printTripsPerDay();
 
-        network.gradientDescent();
+        //network.gradientDescent();
         
         
         

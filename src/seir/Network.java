@@ -336,189 +336,243 @@ public class Network
         }
         filein.close();
         
+        int format = 0;
         
-        
-        filein = new Scanner(new File("data/"+dir+"/MN_population.csv"));
-        int count = 0;
-        while(filein.hasNext())
+        if(scenario.contains("MN"))
         {
-            count++;
-            filein.nextLine();
+            format = 1;
         }
-        filein.close();
-        
-        count = Math.min(numZones, count);
-        
-        zones = new Zone[count];
-        
-        filein = new Scanner(new File("data/"+dir+"/MN_population.csv"));
-        
-        
-        int idx = 0;
-        while(filein.hasNext())
+        else if(scenario.contains("TX"))
         {
+            format = 2;
+        }
+        
+        if(format == 1)
+        {
+            filein = new Scanner(new File("data/"+dir+"/MN_population.csv"));
+            int count = 0;
+            while(filein.hasNext())
+            {
+                count++;
+                filein.nextLine();
+            }
+            filein.close();
+
+            count = Math.min(numZones, count);
+
+            zones = new Zone[count];
+
+            filein = new Scanner(new File("data/"+dir+"/MN_population.csv"));
+
+
+            int idx = 0;
+            while(filein.hasNext())
+            {
+                Scanner chopper = new Scanner(filein.nextLine());
+                chopper.useDelimiter(",");
+
+                int county = chopper.nextInt();
+                double pop = chopper.nextDouble();
+                zones[idx++] = new Zone(county, pop);
+
+                if(idx >= zones.length)
+                {
+                    break;
+                }
+            }
+            filein.close();
+
+            count = 0;
+            filein = new Scanner(new File("data/"+dir+"/MN_infected.csv"));
+            filein.nextLine();
+            while(filein.hasNext())
+            {
+                filein.nextLine();
+                count++;
+            }
+            filein.close();
+
+            if(T == 0)
+            {
+                T = count;
+            }
+
+
+            filein = new Scanner(new File("data/"+dir+"/MN_infected.csv"));
+            double[][] reportedI = new double[zones.length][T];
+
+            Map<Integer, Integer> cols = new HashMap<>();
+
+
             Scanner chopper = new Scanner(filein.nextLine());
             chopper.useDelimiter(",");
-            
-            int county = chopper.nextInt();
-            double pop = chopper.nextDouble();
-            zones[idx++] = new Zone(county, pop);
-            
-            if(idx >= zones.length)
-            {
-                break;
-            }
-        }
-        filein.close();
-        
-        count = 0;
-        filein = new Scanner(new File("data/"+dir+"/MN_infected.csv"));
-        filein.nextLine();
-        while(filein.hasNext())
-        {
-            filein.nextLine();
-            count++;
-        }
-        filein.close();
-        
-        if(T == 0)
-        {
-            T = count;
-        }
-        
-        
-        filein = new Scanner(new File("data/"+dir+"/MN_infected.csv"));
-        double[][] reportedI = new double[zones.length][T];
-        
-        Map<Integer, Integer> cols = new HashMap<>();
 
-        
-        Scanner chopper = new Scanner(filein.nextLine());
-        chopper.useDelimiter(",");
-        
-        chopper.next();
-        
-        idx = 0;
-        while(chopper.hasNextInt())
-        {
-            cols.put(chopper.nextInt(), idx++);
-        }
-        
-        while(filein.hasNext())
-        {
-            chopper = new Scanner(filein.nextLine());
-            chopper.useDelimiter(",");
-            
-            int t = chopper.nextInt();
-            
-            for(int i = 0; i < reportedI.length; i++)
-            {
-                reportedI[i][t-1] = chopper.nextDouble();
-            }
-        }
-        
-        filein.close();
-        
-        for(Zone z : zones)
-        {
-            z.setReportedI(reportedI[cols.get(z.getId())]);
-        }
-        
-        
-        reportedI = null;
-        
-        
-        filein = new Scanner(new File("data/"+dir+"/MN_recovered.csv"));
-        double[][] reportedR = new double[zones.length][T];
-        
-        cols = new HashMap<>();
+            chopper.next();
 
-        
-        chopper = new Scanner(filein.nextLine());
-        chopper.useDelimiter(",");
-        
-        chopper.next();
-        
-        idx = 0;
-        while(chopper.hasNextInt())
-        {
-            cols.put(chopper.nextInt(), idx++);
-        }
-        
-        while(filein.hasNext())
-        {
-            chopper = new Scanner(filein.nextLine());
-            chopper.useDelimiter(",");
-            
-            int t = chopper.nextInt();
-            
-            for(int i = 0; i < reportedR.length; i++)
+            idx = 0;
+            while(chopper.hasNextInt())
             {
-                reportedR[i][t-1] = chopper.nextDouble();
+                cols.put(chopper.nextInt(), idx++);
             }
-        }
-        
-        filein.close();
-        
-        for(Zone z : zones)
-        {
-            z.setReportedR(reportedR[cols.get(z.getId())]);
-        }
-        
-        
-        filein = new Scanner(new File("data/"+dir+"/MN_deaths.csv"));
-        reportedR = new double[zones.length][T];
-        
-        cols = new HashMap<>();
 
-        
-        chopper = new Scanner(filein.nextLine());
-        chopper.useDelimiter(",");
-        
-        chopper.next();
-        
-        idx = 0;
-        while(chopper.hasNextInt())
-        {
-            cols.put(chopper.nextInt(), idx++);
-        }
-        
-        while(filein.hasNext())
-        {
-            chopper = new Scanner(filein.nextLine());
-            chopper.useDelimiter(",");
-            
-            int t = chopper.nextInt();
-            
-            for(int i = 0; i < reportedR.length; i++)
+            while(filein.hasNext())
             {
-                reportedR[i][t-1] = chopper.nextDouble();
-            }
-        }
-        
-        filein.close();
-        
-        for(Zone z : zones)
-        {
-            z.addReportedR(reportedR[cols.get(z.getId())]);
-        }
-        
-        
-        
-        matrix = new Link[zones.length][zones.length];
-        
-        for(int r = 0; r < matrix.length; r++)
-        {
-            for(int c = 0; c < matrix[r].length; c++)
-            {
-                if(r != c)
+                chopper = new Scanner(filein.nextLine());
+                chopper.useDelimiter(",");
+
+                int t = chopper.nextInt();
+
+                for(int i = 0; i < reportedI.length; i++)
                 {
-                    matrix[r][c] = new Link(T);
+                    reportedI[i][t-1] = chopper.nextDouble();
+                }
+            }
+
+            filein.close();
+
+            for(Zone z : zones)
+            {
+                z.setReportedI(reportedI[cols.get(z.getId())]);
+            }
+
+
+            reportedI = null;
+
+
+            filein = new Scanner(new File("data/"+dir+"/MN_recovered.csv"));
+            double[][] reportedR = new double[zones.length][T];
+
+            cols = new HashMap<>();
+
+
+            chopper = new Scanner(filein.nextLine());
+            chopper.useDelimiter(",");
+
+            chopper.next();
+
+            idx = 0;
+            while(chopper.hasNextInt())
+            {
+                cols.put(chopper.nextInt(), idx++);
+            }
+
+            while(filein.hasNext())
+            {
+                chopper = new Scanner(filein.nextLine());
+                chopper.useDelimiter(",");
+
+                int t = chopper.nextInt();
+
+                for(int i = 0; i < reportedR.length; i++)
+                {
+                    reportedR[i][t-1] = chopper.nextDouble();
+                }
+            }
+
+            filein.close();
+
+            for(Zone z : zones)
+            {
+                z.setReportedR(reportedR[cols.get(z.getId())]);
+            }
+
+
+            filein = new Scanner(new File("data/"+dir+"/MN_deaths.csv"));
+            reportedR = new double[zones.length][T];
+
+            cols = new HashMap<>();
+
+
+            chopper = new Scanner(filein.nextLine());
+            chopper.useDelimiter(",");
+
+            chopper.next();
+
+            idx = 0;
+            while(chopper.hasNextInt())
+            {
+                cols.put(chopper.nextInt(), idx++);
+            }
+
+            while(filein.hasNext())
+            {
+                chopper = new Scanner(filein.nextLine());
+                chopper.useDelimiter(",");
+
+                int t = chopper.nextInt();
+
+                for(int i = 0; i < reportedR.length; i++)
+                {
+                    reportedR[i][t-1] = chopper.nextDouble();
+                }
+            }
+
+            filein.close();
+
+            for(Zone z : zones)
+            {
+                z.addReportedR(reportedR[cols.get(z.getId())]);
+            }
+
+
+
+            matrix = new Link[zones.length][zones.length];
+
+            for(int r = 0; r < matrix.length; r++)
+            {
+                for(int c = 0; c < matrix[r].length; c++)
+                {
+                    if(r != c)
+                    {
+                        matrix[r][c] = new Link(T);
+                    }
                 }
             }
         }
+        else if(format == 2)
+        {
+            filein = new Scanner(new File("population.txt"));
+            
+            filein.nextLine();
+            
+            int count = 0;
+            
+            
+            while(filein.hasNext())
+            {
+                count++;
+                filein.nextLine();
+            }
+            filein.close();
+            
+            
+            
+            int idx = 0;
+            zones = new Zone[count];
+            
+            filein = new Scanner(new File("population.txt"));
+            
+            filein.nextLine();
+            
+            while(filein.hasNext())
+            {
+                filein.next();
+                
+                if(!filein.hasNextInt())
+                {
+                    filein.next();
+                }
+                
+                int N = filein.nextInt();
+                filein.nextLine();
+                
+                zones[idx++] = new Zone(48000+idx*2+1, N);
+            }
+            filein.close();
+            
+        }
         
-        
+
         try
         {
             filein = new Scanner(new File("data/"+dir+"/county_data.txt"));
@@ -535,7 +589,7 @@ public class Network
             filein.close();
         }
         catch(IOException ex){}
-        
+
         
         filein = new Scanner(new File("data/"+dir+"/timeline_r.txt"));
         
@@ -631,216 +685,220 @@ public class Network
         
         
         
-        count = 0;
+        int count = 0;
        
-        filein = new Scanner(new File("data/"+scenario+"/travel_change.csv"));
-        Map<Integer, Double> changes = new HashMap<Integer, Double>();
         
-        filein.nextLine();
-        
-        int lastDay = 0;
-        int earliest_change_date = Integer.MAX_VALUE;
-        while(filein.hasNext())
+        if(format == 1)
         {
-            chopper = new Scanner(filein.nextLine());
-            chopper.useDelimiter(",");
-            
-            try
-            {
-                Date day = new SimpleDateFormat("MM/dd/yyyy").parse(chopper.next());
-                chopper.next();
-                chopper.next();
-                chopper.next();
-                chopper.next();
-                
-                double change = chopper.nextDouble();
-                int daysBetween = daysBetween(start, day);
-                changes.put(daysBetween, change);
-                earliest_change_date = (int)Math.min(daysBetween, earliest_change_date);
-                lastDay = (int)Math.max(daysBetween, lastDay);
-            }
-            catch(ParseException ex)
-            {
-                ex.printStackTrace(System.err);
-            }
-        }
-        filein.close();
-        
-        for(int t = 0; t < earliest_change_date; t++)
-        {
-            changes.put(t, 0.0);
-        }
-        
-        
-        cols = null;
-        
-        Map<Integer, Integer> zoneLookup = new HashMap<>();
-        
-        for(int i = 0; i < zones.length; i++)
-        {
-            zoneLookup.put(zones[i].getId(), i);
-        }
-        
-        
-        filein = new Scanner(new File("data/"+scenario+"/travel_data.txt"));
-        while(filein.hasNext())
-        {
-            Date start_period_date, end_period_date, start_apply_date, end_apply_date;
-            
-            try
-            {
-                start_period_date = new SimpleDateFormat("MM/dd/yyyy").parse(filein.next());
-                end_period_date = new SimpleDateFormat("MM/dd/yyyy").parse(filein.next());
-                start_apply_date = new SimpleDateFormat("MM/dd/yyyy").parse(filein.next());
-                end_apply_date = new SimpleDateFormat("MM/dd/yyyy").parse(filein.next());
-                String datafile = filein.nextLine().trim();
-                
-                int start_period = daysBetween(start, start_period_date);
-                int end_period = daysBetween(start, end_period_date);
-                int start_apply = daysBetween(start, start_apply_date);
-                int end_apply = daysBetween(start, end_apply_date);
-                
-                if(!reduce_travel)
-                {
-                    end_apply = T;
-                }
-                
-                
-                
-                // scale up demand to normal then scale down by % change
-                double total_predicted = 0;
-                double total_actual = 0;
-                count = 0;
-                
-                
-                
-                for(int i = start_period; i <= end_period; i++)
-                {
-                    if(changes.containsKey(i))
-                    {
-                        total_predicted += 1;
-                        total_actual += (100+changes.get(i))/100;
-                        count++;
-                    }
-                }
-                
-                
-                double total1 = 0;
-                double total2 = 0;
-                
-                double scaleup = 1.0 / (total_actual / total_predicted);
-                
-                Scanner filein2 = new Scanner(new File("data/"+scenario+"/"+datafile));
-                
-                while(filein2.hasNext())
-                {
-                    chopper = new Scanner(filein2.nextLine());
-                    chopper.useDelimiter(",");
-                    
-                    int source = chopper.nextInt();
-                    int dest = chopper.nextInt();
-                    double demand = chopper.nextDouble();
-                    
-                    total1 += demand;
-                    
-                    
-                    if(!zoneLookup.containsKey(source) || !zoneLookup.containsKey(dest))
-                    {
-                        continue;
-                    }
-                    int r = zoneLookup.get(source);
-                    int c = zoneLookup.get(dest);
-                    
-                    if(r == c)
-                    {
-                        continue;
-                    }
-                    
-                    total2 += demand;
-                
-                    for(int t = (int)Math.max(0, start_apply); t <= end_apply && t < T; t++)
-                    {
-                        
-                        
-                        double change;
-                        if(!changes.containsKey(t))
-                        {
-                            change = changes.get(lastDay);
-                        }
-                        else
-                        {
-                            change = changes.get(t);
-                        }
-                        
-                        double scaledown = (100+change)/100;
+            filein = new Scanner(new File("data/"+scenario+"/travel_change.csv"));
+            Map<Integer, Double> changes = new HashMap<Integer, Double>();
 
-                        if(reduce_travel)
-                        {
-                            matrix[r][c].setNormalDemand(zones[r], zones[c], t, demand*scaleup * scaledown);
-                        }
-                        else
-                        {
-                            matrix[r][c].setNormalDemand(zones[r], zones[c], t, demand);
-                        }
-
-                    }
-                }
-                filein2.close();
-                
-                
-                
-                System.out.println("Loaded travel: "+start_apply+" to "+end_apply+" "+total1+" "+total2);
-                
-                if(!reduce_travel)
-                {
-                    break;
-                }
-                
-            }
-            catch(ParseException ex)
-            {
-                ex.printStackTrace(System.err);
-            }
-            
-            
-        }
-        filein.close();
-        
-        
-        File boundsdir = new File("data/"+scenario+"/boundaries/");
-        
-        for(File f : boundsdir.listFiles())
-        {
-            filein = new Scanner(f);
-            
-            int county = 0;
-            
-            List<Location> coords = new ArrayList<>();
-            
             filein.nextLine();
-            
+
+            int lastDay = 0;
+            int earliest_change_date = Integer.MAX_VALUE;
             while(filein.hasNext())
             {
-                chopper = new Scanner(filein.nextLine());
+                Scanner chopper = new Scanner(filein.nextLine());
                 chopper.useDelimiter(",");
-                
-                chopper.next();
-                county = chopper.nextInt();
-                chopper.next();
-                chopper.next();
-                chopper.next();
-                
-                coords.add(new Location(chopper.nextDouble(), chopper.nextDouble()));
-            }
-            
-            filein.close();
-            
-            for(Zone i : zones)
-            {
-                if(i.getId() % 1000 == county % 1000)
+
+                try
                 {
-                    i.setBoundary(coords);
-                    break;
+                    Date day = new SimpleDateFormat("MM/dd/yyyy").parse(chopper.next());
+                    chopper.next();
+                    chopper.next();
+                    chopper.next();
+                    chopper.next();
+
+                    double change = chopper.nextDouble();
+                    int daysBetween = daysBetween(start, day);
+                    changes.put(daysBetween, change);
+                    earliest_change_date = (int)Math.min(daysBetween, earliest_change_date);
+                    lastDay = (int)Math.max(daysBetween, lastDay);
+                }
+                catch(ParseException ex)
+                {
+                    ex.printStackTrace(System.err);
+                }
+            }
+            filein.close();
+
+            for(int t = 0; t < earliest_change_date; t++)
+            {
+                changes.put(t, 0.0);
+            }
+        
+        
+        
+        
+        
+            Map<Integer, Integer> zoneLookup = new HashMap<>();
+
+            for(int i = 0; i < zones.length; i++)
+            {
+                zoneLookup.put(zones[i].getId(), i);
+            }
+
+            filein = new Scanner(new File("data/"+scenario+"/travel_data.txt"));
+            while(filein.hasNext())
+            {
+                Date start_period_date, end_period_date, start_apply_date, end_apply_date;
+
+                try
+                {
+                    start_period_date = new SimpleDateFormat("MM/dd/yyyy").parse(filein.next());
+                    end_period_date = new SimpleDateFormat("MM/dd/yyyy").parse(filein.next());
+                    start_apply_date = new SimpleDateFormat("MM/dd/yyyy").parse(filein.next());
+                    end_apply_date = new SimpleDateFormat("MM/dd/yyyy").parse(filein.next());
+                    String datafile = filein.nextLine().trim();
+
+                    int start_period = daysBetween(start, start_period_date);
+                    int end_period = daysBetween(start, end_period_date);
+                    int start_apply = daysBetween(start, start_apply_date);
+                    int end_apply = daysBetween(start, end_apply_date);
+
+                    if(!reduce_travel)
+                    {
+                        end_apply = T;
+                    }
+
+
+
+                    // scale up demand to normal then scale down by % change
+                    double total_predicted = 0;
+                    double total_actual = 0;
+                    count = 0;
+
+
+
+                    for(int i = start_period; i <= end_period; i++)
+                    {
+                        if(changes.containsKey(i))
+                        {
+                            total_predicted += 1;
+                            total_actual += (100+changes.get(i))/100;
+                            count++;
+                        }
+                    }
+
+
+                    double total1 = 0;
+                    double total2 = 0;
+
+                    double scaleup = 1.0 / (total_actual / total_predicted);
+
+                    Scanner filein2 = new Scanner(new File("data/"+scenario+"/"+datafile));
+
+                    while(filein2.hasNext())
+                    {
+                        Scanner chopper = new Scanner(filein2.nextLine());
+                        chopper.useDelimiter(",");
+
+                        int source = chopper.nextInt();
+                        int dest = chopper.nextInt();
+                        double demand = chopper.nextDouble();
+
+                        total1 += demand;
+
+
+                        if(!zoneLookup.containsKey(source) || !zoneLookup.containsKey(dest))
+                        {
+                            continue;
+                        }
+                        int r = zoneLookup.get(source);
+                        int c = zoneLookup.get(dest);
+
+                        if(r == c)
+                        {
+                            continue;
+                        }
+
+                        total2 += demand;
+
+                        for(int t = (int)Math.max(0, start_apply); t <= end_apply && t < T; t++)
+                        {
+
+
+                            double change;
+                            if(!changes.containsKey(t))
+                            {
+                                change = changes.get(lastDay);
+                            }
+                            else
+                            {
+                                change = changes.get(t);
+                            }
+
+                            double scaledown = (100+change)/100;
+
+                            if(reduce_travel)
+                            {
+                                matrix[r][c].setNormalDemand(zones[r], zones[c], t, demand*scaleup * scaledown);
+                            }
+                            else
+                            {
+                                matrix[r][c].setNormalDemand(zones[r], zones[c], t, demand);
+                            }
+
+                        }
+                    }
+                    filein2.close();
+
+
+
+                    System.out.println("Loaded travel: "+start_apply+" to "+end_apply+" "+total1+" "+total2);
+
+                    if(!reduce_travel)
+                    {
+                        break;
+                    }
+
+                }
+                catch(ParseException ex)
+                {
+                    ex.printStackTrace(System.err);
+                }
+
+
+            }
+            filein.close();
+
+
+            File boundsdir = new File("data/"+scenario+"/boundaries/");
+
+            for(File f : boundsdir.listFiles())
+            {
+                filein = new Scanner(f);
+
+                int county = 0;
+
+                List<Location> coords = new ArrayList<>();
+
+                filein.nextLine();
+
+                while(filein.hasNext())
+                {
+                    Scanner chopper = new Scanner(filein.nextLine());
+                    chopper.useDelimiter(",");
+
+                    chopper.next();
+                    county = chopper.nextInt();
+                    chopper.next();
+                    chopper.next();
+                    chopper.next();
+
+                    coords.add(new Location(chopper.nextDouble(), chopper.nextDouble()));
+                }
+
+                filein.close();
+
+                for(Zone i : zones)
+                {
+                    if(i.getId() % 1000 == county % 1000)
+                    {
+                        i.setBoundary(coords);
+                        break;
+                    }
                 }
             }
         }
