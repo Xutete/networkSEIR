@@ -113,9 +113,3 @@ date,weekday,District,vmt.sum,vmt.predict,typical_vmt_diff
 6/20/2020,Saturday,MnDOT Statewide,NA,NA,-10
 6/21/2020,Sunday,MnDOT Statewide,NA,NA,-9
 6/22/2020,Monday,MnDOT Statewide,NA,NA,-6.4
-6/23/2020,Tuesday,MnDOT Statewide,NA,NA,-6.7
-6/24/2020,Wednesday,MnDOT Statewide,NA,NA,-6.3
-6/25/2020,Thursday,MnDOT Statewide,NA,NA,-4.9
-6/26/2020,Friday,MnDOT Statewide,NA,NA,-7.7
-6/27/2020,Saturday,MnDOT Statewide,NA,NA,-5.1
-6/28/2020,Sunday,MnDOT Statewide,NA,NA,-9.7
