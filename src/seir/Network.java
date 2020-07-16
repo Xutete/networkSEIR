@@ -33,7 +33,7 @@ import java.util.Random;
 public class Network 
 {
     
-    public static final boolean optimizeParameters = true;
+    public static final boolean optimizeParameters = false;
     public static final double INFTY = Double.MAX_VALUE;
     public static final boolean reduce_travel = true;
     
@@ -760,6 +760,8 @@ public class Network
                 
                     for(int t = (int)Math.max(0, start_apply); t <= end_apply && t < T; t++)
                     {
+                        
+                        
                         double change;
                         if(!changes.containsKey(t))
                         {
@@ -780,9 +782,12 @@ public class Network
                         {
                             matrix[r][c].setNormalDemand(zones[r], zones[c], t, demand);
                         }
+
                     }
                 }
                 filein2.close();
+                
+                
                 
                 System.out.println("Loaded travel: "+start_apply+" to "+end_apply+" "+total1+" "+total2);
                 

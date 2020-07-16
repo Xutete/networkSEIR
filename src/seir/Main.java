@@ -27,32 +27,26 @@ public class Main {
 
         
 
-        Network network = new Network("MN_model2", 345);
+        Network network = new Network("MN_model2");
 
         // 345 max time
+        //network.printTripsPerDay();
+
+        network.gradientDescent();
+        
+        
+        
         
         /*
-        Network network = new Network("MN_model2_12");
-
-        network.gradientDescent();
-        
-        network = new Network("MN_travel_12");
-
-        network.gradientDescent();
-        */
-        
-        
-        
-        
         network.load(0);
         
         System.out.println("trips at 151: "+network.getTotalTrips(151));
 
-        double obj = network.calculateSEIR();
+        //double obj = network.calculateSEIR();
         
         System.out.println("T="+network.T);
         
-
+*/
         /*
         PrintStream fileout = new PrintStream(new FileOutputStream(network.getDirectory()+"/output/total_cases.txt"), true);
         for(Zone i : network.getZones())
@@ -68,8 +62,15 @@ public class Main {
         
         
         
-        network.printTotalError(new File(network.getDirectory()+"/output/total_error_projected.txt"));
-
+        
+        /*
+        
+        network.printTotalError(new File(network.getDirectory()+"/output/total_error_0.txt"));
+        network.printZone(network.findZone(27053));
+        network.printZone(network.findZone(27123));
+*/
+        
+        /*
         //PlotErrors test = new PlotErrors(network);
         
         //network.printAverageRates();
@@ -96,7 +97,7 @@ public class Main {
         CountyDisplay test2 = new CountyDisplay(network);
         MapViewer map = test2.getMap();
         
-        
+        */
         /*
         for(int t = network.getStartTime(); t < network.T; t++)
         {
