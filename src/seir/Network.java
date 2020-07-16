@@ -336,6 +336,34 @@ public class Network
         }
         filein.close();
         
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         int format = 0;
         
         if(scenario.contains("MN"))
@@ -513,63 +541,90 @@ public class Network
             {
                 z.addReportedR(reportedR[cols.get(z.getId())]);
             }
-
-
-
-            matrix = new Link[zones.length][zones.length];
-
-            for(int r = 0; r < matrix.length; r++)
-            {
-                for(int c = 0; c < matrix[r].length; c++)
-                {
-                    if(r != c)
-                    {
-                        matrix[r][c] = new Link(T);
-                    }
-                }
-            }
+            
         }
         else if(format == 2)
         {
-            filein = new Scanner(new File("population.txt"));
-            
-            filein.nextLine();
+            filein = new Scanner(new File("data/"+dir+"/cumulative_cases.txt"));
             
             int count = 0;
+            int countT = 0;
+            
+            count++;
+            filein.next();
+            filein.next();
+            
+            while(filein.hasNextInt())
+            {
+                countT++;
+                filein.nextInt();
+            }
+            
+            filein.nextLine();
             
             
             while(filein.hasNext())
             {
                 count++;
+                
                 filein.nextLine();
             }
             filein.close();
+            T = countT;
+            
             
             
             
             int idx = 0;
             zones = new Zone[count];
             
-            filein = new Scanner(new File("population.txt"));
+            filein = new Scanner(new File("data/"+dir+"/cumulative_cases.txt"));
             
-            filein.nextLine();
             
             while(filein.hasNext())
             {
-                filein.next();
-                
+                String name = filein.next();
+                                
                 if(!filein.hasNextInt())
                 {
                     filein.next();
                 }
                 
                 int N = filein.nextInt();
-                filein.nextLine();
                 
-                zones[idx++] = new Zone(48000+idx*2+1, N);
+                zones[idx] = new Zone(48000+idx*2+1, N);
+                
+                
+                double[] reportedI = new double[T];
+                
+                for(int t = 0; t < reportedI.length; t++)
+                {
+                    reportedI[t] = filein.nextDouble();
+                }
+                
+                zones[idx].setReportedI(reportedI);
+                
+                
+                filein.nextLine();
+                idx++;
+                
+                
             }
             filein.close();
             
+        }
+        
+        matrix = new Link[zones.length][zones.length];
+
+        for(int r = 0; r < matrix.length; r++)
+        {
+            for(int c = 0; c < matrix[r].length; c++)
+            {
+                if(r != c)
+                {
+                    matrix[r][c] = new Link(T);
+                }
+            }
         }
         
 
@@ -590,6 +645,11 @@ public class Network
         }
         catch(IOException ex){}
 
+        
+        
+        
+        
+        
         
         filein = new Scanner(new File("data/"+dir+"/timeline_r.txt"));
         
@@ -681,6 +741,7 @@ public class Network
             lambda_periods[i] = new TimePeriod(timeline.get(i), timeline.get(i+1));
         }
 
+        
         
         
         
@@ -898,6 +959,34 @@ public class Network
                     {
                         i.setBoundary(coords);
                         break;
+                    }
+                }
+            }
+        }
+        else if(format == 2)
+        {
+            filein = new Scanner(new File("data/"+dir+"/county_travel.txt"));
+            
+            filein.nextLine();
+            
+            for(int i = 0; i < matrix.length; i++)
+            {
+                int id = filein.nextInt();
+   
+                
+                for(int j = 0; j < matrix[i].length; j++)
+                {
+                    double demand = filein.nextDouble();
+                    
+                    //System.out.println(j+"\t"+zones[j].getId());
+                    
+                    if(i != j)
+                    {
+                        for(int t = 0; t < T; t++)
+                        {
+                            
+                            matrix[i][j].setNormalDemand(zones[i], zones[j], t, demand);
+                        }
                     }
                 }
             }
