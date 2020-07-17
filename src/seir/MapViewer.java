@@ -219,13 +219,13 @@ public class MapViewer extends JMapViewer
         
         if(colors == null)
         {
-            g2.setColor(new Color(100, 100, 100));
+            g2.setColor(new Color(20, 20, 20));
             g2.setStroke(new BasicStroke(4));
         }
         else
         {
             g2.setColor(Color.white);
-            g2.setStroke(new BasicStroke(5));
+            g2.setStroke(new BasicStroke(4));
         }
         
         g2.fillRect(0, 0, getWidth(), getHeight());
@@ -259,7 +259,18 @@ public class MapViewer extends JMapViewer
                 {
                     if(colors == null)
                     {
-                        fillPoly(g2,i.color, points);
+                        /*
+                        int red = (int)Math.round(255*Math.min(1, network.calcRepRate(i, t)/2));
+                        Color color = new Color(255-red, 255, 255-red);
+            
+                        fillPoly(g2, color, points);
+                        */
+                        
+                        int red = (int)Math.round(255*Math.min(1, Math.max(0, (1.0/i.lambda[network.index_lambda(t)] -0.5)/ (0.5) )));
+                        Color color = new Color(255-red, 255-red, 255);
+                        fillPoly(g2, color, points);
+                        
+                        //fillPoly(g2, i.color, points);
                     }
                     else
                     {
@@ -338,11 +349,11 @@ public class MapViewer extends JMapViewer
 
             g.setColor(Color.white);
 
-            g.fillRect(legendx, legendy, (int)(getWidth()/7.0), getHeight()/3);
+            g.fillRect(legendx, legendy, (int)(getWidth()/7.0+5), getHeight()/3);
 
             g.setColor(Color.black);
 
-            g.drawRect(legendx, legendy, (int)(getWidth()/7.0), getHeight()/3);
+            g.drawRect(legendx, legendy, (int)(getWidth()/7+5), getHeight()/3);
 
 
 
@@ -718,11 +729,12 @@ public class MapViewer extends JMapViewer
                 
                 if(colors == null)
                 {
-                    JOptionPane.showMessageDialog(frame, "Screenshot saved in "+file.getName(), "Screenshot saved", JOptionPane.INFORMATION_MESSAGE);
+                    //JOptionPane.showMessageDialog(frame, "Screenshot saved in "+file.getName(), "Screenshot saved", JOptionPane.INFORMATION_MESSAGE);
                 }
             }
         };
-        thread.start();
+        //thread.start();
+        thread.run();
     }
 
 }

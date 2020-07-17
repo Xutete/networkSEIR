@@ -35,7 +35,7 @@ public class Link
     {
         if(apriltravel && t > 60+18)
         {
-            t = 60+11 + t%7;
+            t = 60+11 + (t-60-11)%7;
         }
         return mu[t];
     }
@@ -44,7 +44,7 @@ public class Link
     {
         if(apriltravel && t > 60+18)
         {
-            t = 60+11 + t%7;
+            t = 60+11 + (t-60-11)%7;
         }
         return trips[t];
     }

@@ -6,11 +6,15 @@
 package seir;
 
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.TreeMap;
+import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 
 /**
@@ -24,29 +28,37 @@ public class Main {
      */
     public static void main(String[] args) throws IOException
     {
-
+/*
+        for(int t = 60; t < 153; t++)
+        {
+            createImage(t);
+        }
         
-
-        Network network = new Network("MN_model2");
+        System.exit(0);
+*/
+        Network network = new Network("MN_travel");
 
         // 345 max time
         //network.printTripsPerDay();
 
+        network.load(0);
         network.gradientDescent();
         
         
         
         
-        /*
+        
         network.load(0);
         
-        System.out.println("trips at 151: "+network.getTotalTrips(151));
+        //network.includeTravel = false;
+        
+        //System.out.println("trips at 200: "+network.getTotalTrips(network.getStartTime()+200));
 
-        //double obj = network.calculateSEIR();
+        double obj = network.calculateSEIR();
         
         System.out.println("T="+network.T);
         
-*/
+        
         /*
         PrintStream fileout = new PrintStream(new FileOutputStream(network.getDirectory()+"/output/total_cases.txt"), true);
         for(Zone i : network.getZones())
@@ -60,17 +72,21 @@ public class Main {
         
         */
         
+        System.out.println("cases: "+network.getTotalCases());
         
         
         
-        /*
+        
+        
         
         network.printTotalError(new File(network.getDirectory()+"/output/total_error_0.txt"));
-        network.printZone(network.findZone(27053));
-        network.printZone(network.findZone(27123));
-*/
+        //network.printZone(network.findZone(27053));
+        //network.printZone(network.findZone(27123));
+
         
-        /*
+        
+        //network.printAverageRates();
+        
         //PlotErrors test = new PlotErrors(network);
         
         //network.printAverageRates();
@@ -78,10 +94,12 @@ public class Main {
         //network.colorZonesr(network.getStartTime()+41);
         network.colorZonesLambda();
 
-        //network.colorZonesData(10);
+        //network.colorZonesData(0, 1);
         //network.colorZonesI(500, 100);
         //network.colorZonesRpct(2);
+        //network.colorZonesr();
 
+        
         Gradient colors = new Gradient();
         
 
@@ -96,22 +114,22 @@ public class Main {
         
         CountyDisplay test2 = new CountyDisplay(network);
         MapViewer map = test2.getMap();
+        map.setTime(network.getStartTime()+92);
         
-        */
-        /*
+        
         for(int t = network.getStartTime(); t < network.T; t++)
         {
             map.setTime(t);
             try
             {
-                map.saveHighResScreenshot(new File(network.getDirectory()+"/timeline/t_"+t+".png"));
+                map.saveHighResScreenshot(new File(network.getDirectory()+"/timeline/l_"+t+".png"));
             }
             catch(Exception ex)
             {
                 ex.printStackTrace(System.err);
             }
         }
-        */
+        
         
         //network.printTripsPerDay();
         
@@ -169,10 +187,50 @@ public class Main {
         System.out.println(step);
         */
 
-
         
         
+        
 
+    }
+    
+    public static void createImage(int t) throws IOException
+    {
+        BufferedImage image = new BufferedImage(2990, 1682, BufferedImage.TYPE_INT_ARGB);
+        Graphics g = image.getGraphics();
+        
+        BufferedImage cases = ImageIO.read(new File("data/MN_model2/timeline/t_"+t+".png"));
+        BufferedImage r = ImageIO.read(new File("data/MN_model2/timeline/r_"+t+".png"));
+        BufferedImage lambda = ImageIO.read(new File("data/MN_model2/timeline/l_"+t+".png"));
+        
+        int x = (2990-2857)/2;
+        
+        g.setColor(Color.white);
+        g.fillRect(0, 0, image.getWidth(), image.getHeight());
+        
+        g.setFont(new Font("TimesRoman", Font.PLAIN, 60));
+        
+        g.drawImage(cases, x+0, 0, null);
+        
+        g.drawImage(r, 200+x+1857+50, 80, 662, 728, null);
+        
+        g.setColor(Color.black);
+        
+        int offset = (662-g.getFontMetrics().stringWidth("Reproduction rate"))/2;
+        g.drawString("Reproduction rate", 200+x+1857+50+offset, 55);
+        
+        offset = (662-g.getFontMetrics().stringWidth("Infection detection rate"))/2;
+        g.drawString("Infection detection rate", 200+x+1857+50+offset, 809+100-5);
+
+        
+        g.drawImage(lambda, 200+x+1857+50, 809+120, 662, 728, null);
+        
+        
+        
+        g.drawRect(200+x+2411, 457, 2433-2411, 682-457);
+        
+        g.drawRect(200+x+2411, 1306, 2433-2411, 1531-1306);
+        
+        ImageIO.write(image, "png", new File("data/MN_model2/timeline2/pic_"+t+".png"));
     }
     
 }

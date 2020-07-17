@@ -846,16 +846,16 @@ public class Network
         }
     }
     
-    public void colorZonesData(double max)
+    public void colorZonesData(double min, double max)
     {
         for(Zone i : zones)
         {
-            int red = (int)Math.round(255*Math.max(0, Math.min(1, i.data / max)));
+            int red = (int)Math.round(255*Math.max(0, Math.min(1, (i.data - min) / (max-min))));
             i.color = new Color(255-red, 255, 255);
         }
-        
-        minlabel = "≤0";
-        maxlabel = "≥"+max;
+        // ≤ ≥
+        minlabel = "0%";
+        maxlabel = "100%";
         mincolor = Color.white;
         maxcolor = Color.cyan;
     }
@@ -906,13 +906,13 @@ public class Network
             
             for(int t = startTime; t < T; t++)
             {
-                avg_lambda += i.lambda[index_lambda(t)];
+                avg_lambda += 1.0/i.lambda[index_lambda(t)];
                 count++;
             }
             
             avg_lambda /= count;
             
-            int red = (int)Math.round(255*Math.min(1, (avg_lambda -1)/2));
+            int red = (int)Math.round(255*Math.min(1, Math.max(0, (avg_lambda -0.5)/ (0.5) )));
             i.color = new Color(255-red, 255-red, 255);
         }
         
