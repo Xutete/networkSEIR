@@ -1602,7 +1602,7 @@ public class Network
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM/dd/yyyy");
         
         fileout.println("time\ttrips");
-        for(int t = startTime; t < T; t++)
+        for(int t = 0; t < T; t++)
         {
 
             

@@ -36,13 +36,13 @@ public class Main {
         
         System.exit(0);
 */
-        Network network = new Network("MN_travel");
+        Network network = new Network("MN_model2");
 
         // 345 max time
-        //network.printTripsPerDay();
+        network.printTripsPerDay();
 
-        network.load(0);
-        network.gradientDescent();
+        //network.load(0);
+        //network.gradientDescent();
         
         
         
