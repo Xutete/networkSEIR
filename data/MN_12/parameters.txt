@@ -1,5 +1,0 @@
-travel	false
-startTime	60
-numIter	200
-maxZones 10000
-ell	12
