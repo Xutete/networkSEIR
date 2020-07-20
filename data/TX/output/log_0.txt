@@ -1,0 +1,8 @@
+TX run 0
+T = 131
+lambda_periods = 26
+r_periods = 6
+include travel: true
+randomize false
+model2 true
+Iteration	Objective	Obj. change	I Error	 R error	CPU time (s)

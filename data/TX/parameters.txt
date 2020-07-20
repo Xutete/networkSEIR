@@ -1,0 +1,5 @@
+travel	true
+startTime	60
+numIter	200
+maxZones 10000
+model2 	true
