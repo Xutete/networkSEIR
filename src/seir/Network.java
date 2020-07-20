@@ -2295,8 +2295,7 @@ public class Network
             
             for(Zone i : zones)
             {
-                gradient_xi += 2* (i.I[t] - i.lambda[pi]*i.reportedI[t])*i.dI[t];
-                gradient_xi += removed_weight * (2* (i.R[t] - i.lambda[pi]*i.reportedR[t])*i.dR[t]);
+                gradient_xi += 2* (i.fEI[t] - i.lambda[pi]* (i.reportedI[t+1] - i.reportedI[t]))* (inv_sigma *i.dE[t]);
             }
         }
     }
@@ -2368,10 +2367,9 @@ public class Network
         {
             double sum = 0;
 
-            for(int t = Math.max(startTime, lambda_periods[pi].getStart()); t < lambda_periods[pi].getEnd() && t < T; t++)
+            for(int t = Math.max(startTime, lambda_periods[pi].getStart()); t < lambda_periods[pi].getEnd() && t < T-1; t++)
             {
-                double value = -1 * 2* (i.I[t] - i.lambda[pi] * i.reportedI[t]) * i.reportedI[t];
-                value += -1 * removed_weight * (2* (i.R[t] - i.lambda[pi] * i.reportedR[t]) * i.reportedR[t]);
+                double value = -1 * 2* (i.fEI[t] - i.lambda[pi] * (i.reportedI[t+1]-i.reportedI[t])) * (i.reportedI[t+1]-i.reportedI[t]);
                 sum += value;
 
             }
@@ -2485,14 +2483,13 @@ public class Network
 
             i.gradient_r[pix] = 0;
 
-            for(int t = startTime; t < T; t++)
+            for(int t = startTime; t < T-1; t++)
             {
                 int t_idx = index_lambda(t);
 
                 for(Zone j : zones)
                 {
-                    i.gradient_r[pix] += 2*(j.I[t] - j.lambda[t_idx] * j.reportedI[t])* j.dI[t];
-                    i.gradient_r[pix] += removed_weight * (2*(j.R[t] - j.lambda[t_idx] * j.reportedR[t])* j.dR[t]);
+                    i.gradient_r[pix] += 2*(j.fEI[t] - j.lambda[t_idx] * (j.reportedI[t+1] - j.reportedI[t]))* (inv_sigma * j.dE[t]);
                 }
             }
 
@@ -2580,14 +2577,13 @@ public class Network
 
         i.gradient_E0 = 0;
 
-        for(int t = startTime; t < T; t++)
+        for(int t = startTime; t < T-1; t++)
         {
             int pi = index_lambda(t);
 
             for(Zone j : zones)
             {
-                i.gradient_E0 += 2*(j.I[t] - j.lambda[pi]*j.reportedI[t]) * j.dI[t];
-                i.gradient_E0 += removed_weight * (2*(j.R[t] - j.lambda[pi]*j.reportedR[t]) * j.dR[t]);
+                i.gradient_E0 += 2*(j.fEI[t] - j.lambda[pi]*(j.reportedI[t+1]-j.reportedI[t])) * (inv_sigma * j.dE[t]);
 
             }
         }
@@ -2744,9 +2740,10 @@ public class Network
                 
                 i.S[t+1] = i.S[t] - fSE ;
                 
-                i.E[t+1] = i.E[t] + fSE - (inv_sigma - step*gradient_inv_sigma) *i.E[t];
+                i.fEI[t] = (inv_sigma - step*gradient_inv_sigma) *i.E[t];
+                i.E[t+1] = i.E[t] + fSE - i.fEI[t];
                 
-                i.I[t+1] = i.I[t] + (inv_sigma - step*gradient_inv_sigma)*i.E[t] - (inv_ell - step*gradient_inv_ell)*i.I[t];
+                i.I[t+1] = i.I[t] + i.fEI[t] - (inv_ell - step*gradient_inv_ell)*i.I[t];
                 
                 i.R[t+1] = i.R[t] + (inv_ell - step*gradient_inv_ell)*i.I[t];
                 
@@ -2823,19 +2820,16 @@ public class Network
         
         double output = 0.0;
         
-        for(int t = startTime; t < T; t++)
+        for(int t = startTime+1; t < T-1; t++)
         {
             int pi_lambda = index_lambda(t);
             
             for(Zone i : zones)
             {
                 double newlambda = Math.min(10, Math.max(1, i.lambda[pi_lambda] - step*i.gradient_lambda[pi_lambda]));
-                double temp = i.I[t] - newlambda * i.reportedI[t];
+                double temp = i.fEI[t] - newlambda * (i.reportedI[t+1] - i.reportedI[t]);
                 output += temp*temp;
                 
-                
-                temp = i.R[t] - Math.min(10, Math.max(1, i.lambda[pi_lambda] - step*i.gradient_lambda[pi_lambda])) * i.reportedR[t];
-                output += removed_weight * temp*temp;
             }
         }
         

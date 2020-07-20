@@ -18,6 +18,7 @@ public class Zone
     private static int next_index = 0;
     
     protected double[] S, E, I, R;
+    protected double[] fEI;
     protected double[] dS, dE, dI, dR;
     
     protected double[] reportedI, reportedR;
@@ -70,6 +71,7 @@ public class Zone
         E = new double[T];
         I = new double[T];
         R = new double[T];
+        fEI = new double[T];
         
         dS = new double[T];
         dE = new double[T];

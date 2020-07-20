@@ -32,7 +32,7 @@ public class Main {
         // 345 max time
         //network.printTripsPerDay();
 
-        //network.gradientDescent();
+        network.gradientDescent();
         
         
         
