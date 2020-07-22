@@ -1530,11 +1530,11 @@ public class Network
         }
         
         
-        System.out.println("Iteration\tObjective\tObj. change\tError\tR error\tCPU time");
+        System.out.println("Iteration\tObjective\tObj. change\tError\tCPU time");
         
         if(!loaded)
         {
-            fileout.println("Iteration\tObjective\tObj. change\tI Error\t R error\tCPU time (s)");
+            fileout.println("Iteration\tObjective\tObj. change\tI Error\tCPU time (s)");
         }
         
         if(!loaded)
@@ -1675,12 +1675,11 @@ public class Network
             improvement = 100.0*(prev_obj - obj) / prev_obj;
             
             double error = calculateInfectedError();
-            double error2 = calculateRemovedError();
             
             System.out.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
-                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.2f", error2)+"%\t"+String.format("%.1f", time/1.0e9)+"s");
+                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9)+"s");
             fileout.println(iter+"\t"+obj+"\t"+String.format("%.2f", improvement)
-                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.2f", error2)+"%\t"+String.format("%.1f", time/1.0e9)+"s");
+                    +"%\t"+String.format("%.2f", error)+"%\t"+String.format("%.1f", time/1.0e9)+"s");
             prev_obj = obj;
             
             
@@ -1714,7 +1713,7 @@ public class Network
             for(Zone i : zones)
             {
                 total += i.reportedI[t];
-                error += Math.abs(i.I[t] - i.lambda[pi] * i.reportedI[t]);
+                error += Math.abs(i.fEI[t] - i.lambda[pi] * i.reportedI[t]);
             }
         }
         
@@ -1935,8 +1934,11 @@ public class Network
             
             for(Zone i : zones)
             {
-                total += i.reportedR[t];
-                error += Math.abs(i.R[t] - i.lambda[pi] * i.reportedR[t]);
+                if(i.reportedR != null)
+                {
+                    total += i.reportedR[t];
+                    error += Math.abs(i.R[t] - i.lambda[pi] * i.reportedR[t]);
+                }
             }
         }
         
@@ -2289,7 +2291,7 @@ public class Network
         
         gradient_xi = 0;
         
-        for(int t = startTime; t < T; t++)
+        for(int t = startTime; t < T-1; t++)
         {
             int pi = index_lambda(t);
             
