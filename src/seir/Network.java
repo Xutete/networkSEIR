@@ -1706,14 +1706,14 @@ public class Network
         double error = 0.0;
         double total = 0.0;
         
-        for(int t = startTime; t < T; t++)
+        for(int t = startTime; t < T-1; t++)
         {
             int pi = index_lambda(t);
             
             for(Zone i : zones)
             {
                 total += i.reportedI[t];
-                error += Math.abs(i.fEI[t] - i.lambda[pi] * i.reportedI[t]);
+                error += Math.abs(i.fEI[t] - i.lambda[pi] * (i.reportedI[t+1] - i.reportedI[t]));
             }
         }
         

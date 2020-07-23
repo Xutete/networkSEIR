@@ -33,6 +33,8 @@ public class Main {
         //network.printTripsPerDay();
 
         network.load(0);
+        //double obj = network.calculateSEIR();
+        //System.out.println(network.calculateInfectedError());
         network.gradientDescent();
         
         
